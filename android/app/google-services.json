@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "749924368093",
+    "project_id": "almalek-alameen-e205c",
+    "storage_bucket": "almalek-alameen-e205c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:749924368093:android:71cfc416fc92059a68a534",
+        "android_client_info": {
+          "package_name": "com.example.almalek_alameen"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAVCYM2-nxytxrNgVSiSlMLsTutrwHkHKM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
