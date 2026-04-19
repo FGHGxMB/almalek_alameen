@@ -77,3 +77,60 @@
     - إنشاء `ProductsRepository` الذي يُطبق قاعدة: "اقرأ إصدار المواد، قارنه بالمحلي، حمّل من السيرفر فقط إذا اختلفا، احفظ في Drift، حدّث الإصدار".
 3. تأكد من أن `Drift` يستخدم الـ Models المعتمدة والموجودة لدينا سابقاً أو يقوم بالتحويل بينها.
 4. بعد الانتهاء، قم بتحديث ملف `DEVELOPER_HANDOVER.md`.
+
+####
+---
+---
+---
+
+## المبرمج الحالي: AI Agent 4 (إنشاء نظام التخزين المحلي Drift للكاش)
+**تاريخ آخر تحديث:** إتمام الخطوتين 6 و 7 من المرحلة الثانية.
+
+### ماذا تم إنجازه في هذه الجلسة؟
+1. بناء جدول المواد `ProductsTable` داخل قاعدة بيانات `Drift` (SQLite) لتمكين العرض المحلي دون إنترنت.
+2. استخدام الـ `build_runner` لتوليد ملف `app_database.g.dart` بنجاح.
+3. دمج `SharedPreferences` كمخزن لإصدارات التحديثات عبر كلاس `LocalStorage`.
+4. تصميم فئتي `ProductsCache` و `AreasCache` للتعامل مع حفظ وجلب البيانات محلياً.
+5. كتابة `ProductsRepository` مع الدالة الجوهرية `syncProductsAndAreas` التي تطبق القواعد الحرفية: (اقرأ الإصدار -> قارنه -> حمّل إذا تغيّر -> احفظ محلياً).
+6. حقن جميع الـ Services الجديدة داخل `main.dart` واستدعاء الـ sync في الخفاء عند فتح التطبيق.
+
+### أين توقفنا؟
+أنهينا إعدادات التخزين المحلي والمزامنة التلقائية. البنية التحتية للمواد والمناطق باتت جاهزة ومتصلة بنجاح مع Firestore كـ Single Source of Truth.
+
+### إلى المبرمج القادم (Next AI):
+مرحباً بك. لكي تكمل العمل:
+1. اقرأ `PROJECT_CONTEXT.md` خصوصاً قسم آلية بناء الزبائن والأرقام التسلسلية.
+2. يجب عليك الآن تنفيذ **الخطوة 8 من المرحلة الثانية**:
+    - بناء `account_code_generator.dart` (Utility لبناء رمز الزبون `mainCustomerAccount + counter`).
+    - بناء `customer_name_builder.dart` (Utility لبناء اسم الزبون `suffix + name + region`).
+    - إنشاء `CustomersRepository` شامل، ويجب أن يطبق فلترة `whereIn:[myUid, ...can_monitor]`.
+    - عند إضافة الزبون (`createCustomer`)، تذكر أن الرصيد الافتتاحي يُسجل كـ `balance` مباشرة دون أي Function إضافية.
+3. بعد الانتهاء، قم بتحديث ملف `DEVELOPER_HANDOVER.md`.
+
+####
+---
+---
+---
+
+# DEVELOPER HANDOVER LOG
+
+## المبرمج الحالي: AI Agent 5 (نظام الزبائن وإكمال المرحلة الثانية)
+**تاريخ آخر تحديث:** إتمام المرحلة الثانية بالكامل.
+
+### ماذا تم إنجازه في هذه الجلسة؟
+1. بناء أداة `AccountCodeGenerator` لدمج `main_customer_account` مع `customer_counter` لإنشاء كود الزبون.
+2. بناء أداة `CustomerNameBuilder` لدمج `customer_suffix` مع اسم الزبون ومنطقته بطريقة نظيفة وموحدة.
+3. إنشاء `CustomersRepository` الذي يتضمن:
+    - الاستعلام عن الزبائن باستخدام `Stream` مع فلترة دقيقة: `whereIn: [currentUser.id, ...currentUser.canMonitor]`.
+    - إضافة الزبائن الجدد بشكل آمن عبر `Firestore Transaction` لتحديث `customer_counter` في ملف المندوب، وقراءة الإعدادات العامة للمدينة والبلد، وتحديد الـ `balance` بقيمة الـ `previousBalance` مباشرة عند الإنشاء دون أي حركات إضافية.
+
+### أين توقفنا؟
+أنهينا "المرحلة الثانية بالكامل". التطبيق الآن قادر على المصادقة، تحميل المواد والمناطق وتخزينها محلياً، وجلب/إنشاء الزبائن بقواعد البيانات الصارمة.
+
+### إلى المبرمج القادم (Next AI):
+مرحباً بك. لقد وصلنا إلى **المرحلة الثالثة: Cloud Functions (الباكند)**. لكي تكمل العمل:
+1. اقرأ `PROJECT_CONTEXT.md` وتحديداً القسم 7 (Cloud Functions الكاملة TypeScript).
+2. يجب عليك إرشاد المطور لتهيئة بيئة `Firebase Functions` باستخدام TypeScript.
+3. كتابة دوال `Auth` للإدارة: `adminCreateUser`, `adminUpdateUser`, `adminChangePassword`, `adminDeleteUser`.
+4. كتابة دوال الـ Triggers (Transactions) الخاصة بـ `Invoices`, `Returns`, `Receipts` للتأثير المباشر على أرصدة الزبائن وكاش اليوم (`daily_cash/{date}`).
+5. بعد الانتهاء من كتابة الدوال، قم بتحديث ملف `DEVELOPER_HANDOVER.md`.

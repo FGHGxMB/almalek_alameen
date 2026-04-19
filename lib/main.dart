@@ -11,6 +11,11 @@ import 'core/constants/app_routes.dart';
 import 'core/services/auth_service.dart';
 import 'core/services/firestore_service.dart';
 import 'data/repositories/auth_repository.dart';
+import 'data/repositories/products_repository.dart';
+import 'data/local/app_database.dart';
+import 'data/local/local_storage.dart';
+import 'data/local/products_cache.dart';
+import 'data/local/areas_cache.dart';
 import 'logic/auth/auth_cubit.dart';
 import 'logic/auth/auth_state.dart';
 import 'ui/screens/auth/login_screen.dart';
@@ -18,31 +23,50 @@ import 'ui/screens/auth/login_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // تهيئة Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // تفعيل الكاش لـ Firestore (Offline Persistence)
   final firestoreService = FirestoreService();
   await firestoreService.enableNetworkAndPersistence();
 
-  // حقن التبعيات (Dependency Injection اليدوي كما هو مطلوب)
+  // تهيئة التخزين المحلي وقاعدة بيانات Drift
+  final localStorage = await LocalStorage.init();
+  final appDatabase = AppDatabase();
+  final productsCache = ProductsCache(appDatabase, localStorage);
+  final areasCache = AreasCache(localStorage);
+
   final authService = AuthService();
+
   final authRepository = AuthRepository(
     authService: authService,
     firestoreService: firestoreService,
   );
 
-  runApp(MyApp(authRepository: authRepository));
+  final productsRepository = ProductsRepository(
+    productsCache: productsCache,
+    areasCache: areasCache,
+  );
+
+  // تحديث المواد والمناطق فور فتح التطبيق بالخفاء
+  productsRepository.syncProductsAndAreas();
+
+  runApp(MyApp(
+    authRepository: authRepository,
+    productsRepository: productsRepository,
+  ));
 }
 
 class MyApp extends StatelessWidget {
   final AuthRepository authRepository;
+  final ProductsRepository productsRepository;
 
-  MyApp({Key? key, required this.authRepository}) : super(key: key);
+  MyApp({
+    Key? key,
+    required this.authRepository,
+    required this.productsRepository,
+  }) : super(key: key);
 
-  // إعداد مسارات التطبيق عبر go_router
   late final GoRouter _router = GoRouter(
     initialLocation: AppRoutes.login,
     routes:[
@@ -57,7 +81,6 @@ class MyApp extends StatelessWidget {
         ),
       ),
     ],
-    // حماية المسارات إذا لم يكن المستخدم مسجلاً
     redirect: (context, state) {
       final authState = context.read<AuthCubit>().state;
       final isLoggingIn = state.matchedLocation == AppRoutes.login;
@@ -74,33 +97,33 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return RepositoryProvider.value(
-      value: authRepository,
+    return MultiRepositoryProvider(
+      providers:[
+        RepositoryProvider.value(value: authRepository),
+        RepositoryProvider.value(value: productsRepository),
+      ],
       child: BlocProvider(
-        // جلب حالة الدخول بمجرد فتح التطبيق
         create: (context) => AuthCubit(authRepository)..checkAuthStatus(),
         child: BlocListener<AuthCubit, AuthState>(
           listener: (context, state) {
-            // تحديث الراوتر عند تغيير حالة الدخول
             _router.refresh();
           },
           child: MaterialApp.router(
             title: 'نظام توزيع البهارات',
             debugShowCheckedModeBanner: false,
-            // دعم اللغة العربية والاتجاه من اليمين لليسار
             localizationsDelegates: const[
               GlobalMaterialLocalizations.delegate,
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
             ],
-            supportedLocales: const [
-              Locale('ar', 'AE'), // Arabic
+            supportedLocales: const[
+              Locale('ar', 'AE'),
             ],
             locale: const Locale('ar', 'AE'),
             theme: ThemeData(
               primarySwatch: Colors.teal,
               useMaterial3: true,
-              fontFamily: 'Tajawal', // يفضل إضافة خط عربي لاحقاً
+              fontFamily: 'Tajawal',
             ),
             routerConfig: _router,
           ),
