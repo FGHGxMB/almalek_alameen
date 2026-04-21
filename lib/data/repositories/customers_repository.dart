@@ -25,9 +25,12 @@ class CustomersRepository {
   }
 
   // 2. إضافة زبون جديد (معالجة الأرقام وبناء الاسم داخل Transaction لضمان سلامة العداد)
+  // 2. إضافة زبون جديد (Offline-First باستخدام Batch و FieldValue.increment)
   Future<void> createCustomer({
     required UserModel currentUser,
-    required String rawName, // الاسم الذي أدخله المندوب
+    required String country, // تم جلبهم من الإعدادات المحفوظة
+    required String city,
+    required String rawName,
     required String phone1,
     required String phone2,
     required String email,
@@ -38,62 +41,47 @@ class CustomersRepository {
     required String gender,
     required double previousBalance,
   }) async {
+    final batch = _firestore.batch();
     final userRef = _firestore.collection(FirestoreKeys.users).doc(currentUser.id);
-    final settingsRef = _firestore.collection(FirestoreKeys.settings).doc(FirestoreKeys.appConfigDoc);
     final newCustomerRef = _firestore.collection(FirestoreKeys.customers).doc();
 
-    await _firestore.runTransaction((transaction) async {
-      // قراءة بيانات المستخدم الحالي لجلب العداد
-      final userSnapshot = await transaction.get(userRef);
-      if (!userSnapshot.exists) {
-        throw Exception('بيانات المستخدم غير موجودة.');
-      }
-      final userData = userSnapshot.data()!;
-      final currentCounter = userData[FirestoreKeys.customerCounter] ?? 0;
-      final newCounter = currentCounter + 1;
+    // نستخدم العداد المحلي الموجود في هاتف المندوب للسرعة ولعمله أوفلاين
+    final newCounter = currentUser.customerCounter + 1;
+    final mainAccount = currentUser.mainCustomerAccount;
+    final suffix = currentUser.customerSuffix;
 
-      // قراءة الإعدادات العامة لجلب الدولة والمدينة الثابتة
-      final settingsSnapshot = await transaction.get(settingsRef);
-      final country = settingsSnapshot.exists ? (settingsSnapshot.data()?['country'] ?? '') : '';
-      final city = settingsSnapshot.exists ? (settingsSnapshot.data()?['city'] ?? '') : '';
+    final accountCode = AccountCodeGenerator.generate(mainAccount, newCounter);
+    final fullName = CustomerNameBuilder.build(
+      suffix: suffix,
+      name: rawName,
+      region: region,
+    );
 
-      // توليد الرمز والاسم
-      final mainAccount = userData[FirestoreKeys.mainCustomerAccount] ?? '';
-      final suffix = userData[FirestoreKeys.customerSuffix] ?? '';
+    final newCustomer = CustomerModel(
+      id: newCustomerRef.id,
+      accountCode: accountCode,
+      customerName: fullName,
+      phone1: phone1,
+      phone2: phone2,
+      email: email,
+      notes: notes,
+      country: country,
+      city: city,
+      region: region,
+      district: district,
+      street: street,
+      gender: gender,
+      previousBalance: previousBalance,
+      balance: previousBalance, // الرصيد السابق يصبح الحالي مباشرة
+      delegateId: currentUser.id,
+    );
 
-      final accountCode = AccountCodeGenerator.generate(mainAccount, newCounter);
-      final fullName = CustomerNameBuilder.build(
-        suffix: suffix,
-        name: rawName,
-        region: region,
-      );
+    // كتابة الزبون
+    batch.set(newCustomerRef, newCustomer.toFirestore());
+    // زيادة العداد في حساب المندوب بشكل آمن
+    batch.update(userRef, {FirestoreKeys.customerCounter: FieldValue.increment(1)});
 
-      // إنشاء نموذج الزبون
-      final newCustomer = CustomerModel(
-        id: newCustomerRef.id,
-        accountCode: accountCode,
-        customerName: fullName,
-        phone1: phone1,
-        phone2: phone2,
-        email: email,
-        notes: notes,
-        country: country,
-        city: city,
-        region: region,
-        district: district,
-        street: street,
-        gender: gender,
-        previousBalance: previousBalance,
-        balance: previousBalance, // الرصيد السابق يصبح الرصيد الحالي مباشرة (كما طُلب في الخطة)
-        delegateId: currentUser.id,
-      );
-
-      // حفظ الزبون وتحديث العداد في نفس اللحظة
-      transaction.set(newCustomerRef, newCustomer.toFirestore());
-      transaction.update(userRef, {
-        FirestoreKeys.customerCounter: newCounter,
-      });
-    });
+    await batch.commit();
   }
 
   // 3. تعديل بيانات زبون موجود

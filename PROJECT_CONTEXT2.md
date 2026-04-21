@@ -28,3 +28,34 @@
 2. **فصل الطبقات:** UI -> Cubit -> Repository -> Firestore/Drift.
 3. **التزامن والأرصدة:** Cloud Functions هي المسؤولة الوحيدة عن حساب وتعديل الأرصدة و `daily_cash` عبر Transactions. التطبيق يكتب الفاتورة فقط.
 4. **العرض الآمن:** أي استعلام يتم مفلتراً بـ `whereIn: [myUid, ...can_monitor]`.
+
+####
+---
+---
+---
+
+# PROJECT CONTEXT — تطبيق إدارة مندوبي توزيع البهارات
+*(التحديث الأخير: الاستغناء الكامل عن Cloud Functions واستخدام WriteBatch)*
+
+## ١. هوية النموذج ودوره
+أنت مهندس برمجيات أول متخصص في Flutter وFirebase. التطبيق مخصص للـ Android فقط كأداة داخلية.
+
+## ٢. التحديثات الجوهرية (مهم جداً)
+- **لا Cloud Functions:** تم الاستغناء عنها تماماً (Spark Plan). جميع الحسابات المعقدة (الكاش اليومي، الأرصدة، العدادات) تتم داخل التطبيق باستخدام `WriteBatch` و `FieldValue.increment` لضمان التزامن وعملها في وضع الـ Offline.
+- **إدارة المستخدمين من التطبيق:** إنشاء المستخدمين يتم عبر تهيئة تطبيق `FirebaseApp` ثانوي داخل الكود لمنع تسجيل خروج المدير الحالي.
+
+## ٣. التقنيات المعتمدة
+Flutter, Dart, go_router, flutter_bloc (Cubit), Firebase Auth, Cloud Firestore, Drift (SQLite), SharedPreferences.
+
+## ٤. آليات العمل الجديدة (Batch Writes)
+عند إنشاء فاتورة، يقوم التطبيق بما يلي في `WriteBatch` واحد:
+1. إضافة وثيقة الفاتورة في `invoices`.
+2. زيادة `invoice_counter` العام في `settings/app_config`.
+3. زيادة `delegate_invoice_counter` في `users/{uid}`.
+4. تحديث الكاش في `users/{uid}/daily_cash/{date}` أو تحديث رصيد الزبون في `customers/{id}` باستخدام `FieldValue.increment`.
+
+## ٥. قواعد التنفيذ الإلزامية
+1. لا Magic Strings: استخدم `FirestoreKeys` دائماً.
+2. فصل الطبقات صارم.
+3. العرض الآمن: الفلترة دائماً بـ `whereIn: [myUid, ...can_monitor]`.
+4. أي عملية مالية (إنشاء/تعديل/حذف معاملة) يجب أن تمر عبر `TransactionsRepository` لتنفيذ الـ Batch والتأكد من سلامة البيانات المالية.

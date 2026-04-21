@@ -38,6 +38,8 @@ dependencies:
   # UI Helpers
   google_fonts: ^6.1.0
 
+  esc_pos_utils: ^1.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
