@@ -12,33 +12,6 @@ class SettingsCubit extends Cubit<SettingsState> {
 
   SettingsCubit() : super(SettingsInitial());
 
-  // تحديث البريد الإلكتروني (في Auth وفي Firestore معاً)
-  Future<void> updateEmail(String newEmail) async {
-    emit(SettingsLoading());
-    try {
-      final user = _auth.currentUser;
-      if (user == null) throw Exception('المستخدم غير مسجل الدخول');
-
-      // تحديث الإيميل في خدمة المصادقة
-      await user.updateEmail(newEmail);
-
-      // تحديث الإيميل في قاعدة البيانات
-      await _firestore.collection(FirestoreKeys.users).doc(user.uid).update({
-        FirestoreKeys.email: newEmail,
-      });
-
-      emit(SettingsSuccess('تم تحديث البريد الإلكتروني بنجاح'));
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'requires-recent-login') {
-        emit(SettingsError('هذه العملية حساسة وتتطلب تسجيل الخروج والدخول مجدداً أولاً.'));
-      } else {
-        emit(SettingsError(e.message ?? 'حدث خطأ في المصادقة'));
-      }
-    } catch (e) {
-      emit(SettingsError('حدث خطأ أثناء تحديث البريد: $e'));
-    }
-  }
-
   // تغيير كلمة المرور للمستخدم الحالي
   Future<void> updatePassword(String newPassword) async {
     emit(SettingsLoading());

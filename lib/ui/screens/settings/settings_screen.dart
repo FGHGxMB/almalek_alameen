@@ -13,31 +13,6 @@ import '../../../core/constants/app_routes.dart';
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({Key? key}) : super(key: key);
 
-  void _showEditEmailDialog(BuildContext context, SettingsCubit cubit, String currentEmail) {
-    final controller = TextEditingController(text: currentEmail);
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('تعديل البريد الإلكتروني'),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.emailAddress,
-          decoration: const InputDecoration(labelText: 'البريد الجديد', border: OutlineInputBorder()),
-        ),
-        actions:[
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
-          ElevatedButton(
-            onPressed: () {
-              cubit.updateEmail(controller.text.trim());
-              Navigator.pop(ctx);
-            },
-            child: const Text('حفظ'),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showEditPasswordDialog(BuildContext context, SettingsCubit cubit) {
     final controller = TextEditingController();
     showDialog(
@@ -124,12 +99,6 @@ class SettingsScreen extends StatelessWidget {
 
                 if (state is SettingsLoading) const LinearProgressIndicator(),
 
-                ListTile(
-                  leading: const Icon(Icons.email),
-                  title: const Text('تعديل البريد الإلكتروني'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () => _showEditEmailDialog(context, cubit, user.email),
-                ),
                 ListTile(
                   leading: const Icon(Icons.lock),
                   title: const Text('تغيير كلمة المرور'),
