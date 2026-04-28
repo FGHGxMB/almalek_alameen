@@ -20,6 +20,7 @@ class CustomerModel {
   final double previousBalance;
   final double balance;
   final String delegateId;
+  final DateTime lastTransactionDate;
 
   CustomerModel({
     required this.id,
@@ -38,6 +39,7 @@ class CustomerModel {
     required this.previousBalance,
     required this.balance,
     required this.delegateId,
+    required this.lastTransactionDate,
   });
 
   factory CustomerModel.fromFirestore(DocumentSnapshot doc) {
@@ -59,6 +61,7 @@ class CustomerModel {
       previousBalance: (data[FirestoreKeys.previousBalance] ?? 0).toDouble(),
       balance: (data[FirestoreKeys.balance] ?? 0).toDouble(),
       delegateId: data[FirestoreKeys.delegateId] ?? '',
+      lastTransactionDate: (data[FirestoreKeys.lastTransactionDate] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 
@@ -79,6 +82,7 @@ class CustomerModel {
       FirestoreKeys.previousBalance: previousBalance,
       FirestoreKeys.balance: balance,
       FirestoreKeys.delegateId: delegateId,
+      FirestoreKeys.lastTransactionDate: Timestamp.fromDate(lastTransactionDate),
     };
   }
 
@@ -86,7 +90,7 @@ class CustomerModel {
     String? id, String? accountCode, String? customerName, String? phone1, String? phone2,
     String? email, String? notes, String? country, String? city, String? region,
     String? district, String? street, String? gender, double? previousBalance,
-    double? balance, String? delegateId,
+    double? balance, String? delegateId, DateTime? lastTransactionDate, // أضفنا المتغير هنا
   }) {
     return CustomerModel(
       id: id ?? this.id, accountCode: accountCode ?? this.accountCode, customerName: customerName ?? this.customerName,
@@ -95,6 +99,7 @@ class CustomerModel {
       region: region ?? this.region, district: district ?? this.district, street: street ?? this.street,
       gender: gender ?? this.gender, previousBalance: previousBalance ?? this.previousBalance,
       balance: balance ?? this.balance, delegateId: delegateId ?? this.delegateId,
+      lastTransactionDate: lastTransactionDate ?? this.lastTransactionDate, // أضفنا القيمة هنا
     );
   }
 }

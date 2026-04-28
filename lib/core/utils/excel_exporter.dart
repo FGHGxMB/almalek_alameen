@@ -85,7 +85,10 @@ class ExcelExporter {
   // 2. تصدير الزبائن
   static Future<void> exportCustomers(List<CustomerModel> customers) async {
     var excel = Excel.createExcel();
-    Sheet sheet = excel['الزبائن'];
+
+    // الحل الآمن: نأخذ الشيت الافتراضي الموجود أصلاً (Sheet1) للتعامل معه
+    String defaultSheet = excel.getDefaultSheet() ?? 'Sheet1';
+    Sheet sheet = excel[defaultSheet];
 
     _appendRow(sheet, 0,[
       'رمز الحساب', 'الاسم', 'المنطقة', 'الجنس', 'الهاتف1', 'الهاتف2',
@@ -101,7 +104,7 @@ class ExcelExporter {
       row++;
     }
 
-    excel.delete('Sheet1');
+    // حفظ الملف ومشاركته
     await _saveAndShare(excel, 'Customers_Export_${_formatDate(DateTime.now())}.xlsx');
   }
 

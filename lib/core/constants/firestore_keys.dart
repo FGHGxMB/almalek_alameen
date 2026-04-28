@@ -47,6 +47,7 @@ class FirestoreKeys {
   static const String delegateReceiptCounter = 'delegate_receipt_counter';
   static const String customerCounter = 'customer_counter';
   static const String permissions = 'permissions';
+  static const String accountColor = 'account_color';
 
   // Product Fields
   static const String itemCode = 'item_code';
@@ -86,6 +87,7 @@ class FirestoreKeys {
   static const String gender = 'gender';
   static const String previousBalance = 'previous_balance';
   static const String balance = 'balance';
+  static const String lastTransactionDate = 'last_transaction_date';
 
   // Transaction Fields (Invoices, Returns)
   static const String invoiceNumber = 'invoice_number';

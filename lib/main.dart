@@ -2,6 +2,7 @@
 
 import 'package:spice_app/ui/screens/transactions/invoice_form_screen.dart';
 
+import 'data/models/customer_model.dart';
 import 'data/repositories/admin_repository.dart';
 import 'ui/screens/admin/admin_screen.dart';
 import 'ui/screens/admin/user_edit_screen.dart';
@@ -130,10 +131,6 @@ class MyApp extends StatelessWidget {
         builder: (context, state) => const ReturnFormScreen(), // <--- تم تفعيل الشاشة الحقيقية
       ),
       GoRoute(
-        path: AppRoutes.customerForm,
-        builder: (context, state) => const CustomerFormScreen(),
-      ),
-      GoRoute(
         path: AppRoutes.admin,
         builder: (context, state) => const AdminScreen(), // <--- شاشة الأدمن الحقيقية
       ),
@@ -145,6 +142,20 @@ class MyApp extends StatelessWidget {
           final allUsers = extra['allUsers'] as List<UserModel>? ??[];
           return UserEditScreen(user: user, allUsers: allUsers);
         },
+      ),
+      GoRoute(
+          path: AppRoutes.customerForm,
+          builder: (context, state) {
+            // جلب البيانات الممررة من شاشة الزبائن بأمان تام
+            final extra = state.extra as Map<String, dynamic>?;
+            final target = extra != null ? extra['targetDelegateId'] as String? : null;
+            final customer = extra != null ? extra['customer'] as CustomerModel? : null;
+
+            return CustomerFormScreen(
+              customerToEdit: customer, // هنا نمرر الزبون للتعديل
+              targetDelegateId: target,
+            );
+          }
       ),
     ],
     redirect: (context, state) {
