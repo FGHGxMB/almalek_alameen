@@ -13,7 +13,11 @@ import '../../../data/models/customer_model.dart';
 class CustomerFormScreen extends StatefulWidget {
   final CustomerModel? customerToEdit;
   final String? targetDelegateId;
-  const CustomerFormScreen({Key? key, this.customerToEdit, this.targetDelegateId}) : super(key: key);
+  final String ownerSuffix;
+
+  const CustomerFormScreen({
+    Key? key, this.customerToEdit, this.targetDelegateId, this.ownerSuffix = ''
+  }) : super(key: key);
 
   @override
   State<CustomerFormScreen> createState() => _CustomerFormScreenState();
@@ -44,9 +48,19 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
 
     if (_isEdit) {
       final c = widget.customerToEdit!;
-      // نستخرج الاسم الصافي بافتراض أن الاسم محفوظ كـ "الاسم - المنطقة"
-      final parts = c.customerName.split(' - ');
-      _nameController.text = parts.isNotEmpty ? parts[0] : c.customerName;
+      String cleanName = c.customerName;
+
+      // إزالة البادئة من البداية إن وجدت
+      if (widget.ownerSuffix.isNotEmpty && cleanName.startsWith(widget.ownerSuffix)) {
+        cleanName = cleanName.replaceFirst(widget.ownerSuffix, '').trim();
+      }
+      // إزالة المنطقة من النهاية إن وجدت
+      if (cleanName.endsWith(' - ${c.region}')) {
+        cleanName = cleanName.substring(0, cleanName.length - (' - ${c.region}').length).trim();
+      }
+
+      _nameController.text = cleanName; // الاسم الصافي!
+
       _phone1Controller.text = c.phone1;
       _phone2Controller.text = c.phone2;
       _emailController.text = c.email;
@@ -114,6 +128,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                           context.read<CustomerFormCubit>().saveCustomer(
                             customerToEdit: widget.customerToEdit,
                             targetDelegateId: widget.targetDelegateId,
+                            ownerSuffix: widget.ownerSuffix,
                             rawName: _nameController.text.trim(), region: _selectedRegion!, gender: _selectedGender!,
                             previousBalance: double.parse(_prevBalanceController.text.trim()), phone1: _phone1Controller.text.trim(),
                             phone2: _phone2Controller.text.trim(), email: _emailController.text.trim(), district: _districtController.text.trim(),

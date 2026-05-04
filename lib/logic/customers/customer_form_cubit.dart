@@ -18,6 +18,7 @@ class CustomerFormCubit extends Cubit<CustomerFormState> {
     required String district, required String street, required String gender,
     required double previousBalance, required String country, required String city,
     String? targetDelegateId,
+    required String ownerSuffix, // استلام البادئة
   }) async {
     emit(CustomerFormLoading());
     try {
@@ -29,15 +30,12 @@ class CustomerFormCubit extends Cubit<CustomerFormState> {
           previousBalance: previousBalance, country: country, city: city,
         );
       } else {
-        // تحديث
         final updated = customerToEdit.copyWith(
           phone1: phone1, phone2: phone2, email: email, notes: notes,
           region: region, district: district, street: street, gender: gender,
         );
-        // نمرر الـ suffix الخاص بالمندوب المالك للزبون لإعادة بناء الاسم
-        // لجلب الـ suffix يجب قراءته من المستخدم، للتبسيط سنمرر فراغ مؤقتا أو نعتمد على استخراجه من الاسم الحالي
-        // سنفترض أن الاسم المكتوب في الـ UI هو הـ rawName الصافي بدون suffix
-        await _repository.updateCustomer(customer: updated, rawName: rawName, suffix: '');
+        // نمرر البادئة (suffix) الحقيقية للمندوب عند التحديث بدلاً من الفراغ
+        await _repository.updateCustomer(customer: updated, rawName: rawName, suffix: ownerSuffix);
       }
       emit(CustomerFormSuccess());
     } catch (e) {

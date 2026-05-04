@@ -193,4 +193,20 @@ class CustomersCubit extends Cubit<CustomersState> {
     _sub?.cancel();
     return super.close();
   }
+
+  // دالة السحب للتحديث (تحدث بيانات وألوان المندوبين وتنعش الشاشة)
+  Future<void> refreshData() async {
+    try {
+      final delegateIds =[currentUser.id, ...currentUser.canMonitor];
+      final usersSnap = await FirebaseFirestore.instance.collection(FirestoreKeys.users)
+          .where(FieldPath.documentId, whereIn: delegateIds).get();
+
+      for (var doc in usersSnap.docs) {
+        usersMap[doc.id] = UserModel.fromFirestore(doc);
+      }
+      applyFilters(); // إعادة تطبيق الفلاتر لينعش الواجهة
+    } catch (e) {
+      emit(CustomersError('خطأ أثناء التحديث: $e'));
+    }
+  }
 }

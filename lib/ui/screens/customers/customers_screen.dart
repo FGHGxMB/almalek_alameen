@@ -97,82 +97,96 @@ class CustomersScreen extends StatelessWidget {
               final cubit = context.read<CustomersCubit>();
               if (state.customers.isEmpty) return const Center(child: Text('لا يوجد زبائن مطابقين للبحث.'));
 
-              return ListView.builder(
-                padding: const EdgeInsets.all(12),
-                itemCount: state.customers.length,
-                itemBuilder: (context, index) {
-                  final c = state.customers[index];
-                  final isSelected = cubit.selectedIds.contains(c.id);
-                  final isMine = c.delegateId == currentUser.id;
+              return RefreshIndicator(
+                onRefresh: () => cubit.refreshData(), // <--- ميزة السحب للتحديث هنا
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(12),
+                  itemCount: state.customers.length,
+                  itemBuilder: (context, index) {
+                    final c = state.customers[index];
+                    final isSelected = cubit.selectedIds.contains(c.id);
+                    final isMine = c.delegateId == currentUser.id;
 
-                  final canEdit = (isMine && currentUser.permissions.customerEdit) || (!isMine && currentUser.permissions.customerEditMonitored);
-                  final canDelete = (isMine && currentUser.permissions.customerDelete) || (!isMine && currentUser.permissions.customerDeleteMonitored);
+                    final canEdit = (isMine && currentUser.permissions.customerEdit) || (!isMine && currentUser.permissions.customerEditMonitored);
+                    final canDelete = (isMine && currentUser.permissions.customerDelete) || (!isMine && currentUser.permissions.customerDeleteMonitored);
 
-                  final ownerName = cubit.usersMap[c.delegateId]?.accountName ?? 'مجهول';
-                  final ownerColor = _hexToColor(cubit.usersMap[c.delegateId]?.accountColor ?? '#FFA500');
+                    final ownerName = cubit.usersMap[c.delegateId]?.accountName ?? 'مجهول';
+                    final ownerColor = _hexToColor(cubit.usersMap[c.delegateId]?.accountColor ?? '#FFA500');
+                    final ownerSuffix = cubit.usersMap[c.delegateId]?.customerSuffix ?? '';
 
-                  return Card(
-                    color: isSelected ? Colors.teal.shade50 : Colors.white,
-                    margin: const EdgeInsets.only(bottom: 8),
-                    child: ListTile(
-                      onLongPress: () => cubit.toggleSelectionMode(c.id),
-                      onTap: () {
-                        if (cubit.isSelectionMode) cubit.toggleSelection(c.id);
-                      },
-                      leading: isSelected
-                          ? const CircleAvatar(backgroundColor: Colors.teal, child: Icon(Icons.check, color: Colors.white))
-                          : Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children:[
-                          CircleAvatar(radius: 16, backgroundColor: Colors.teal.shade100, child: Icon(c.gender == 'male' ? Icons.person : Icons.person_3, color: Colors.teal, size: 20)),
-                          if (!isMine)
-                            Container(
-                              margin: const EdgeInsets.only(top: 4),
-                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                              decoration: BoxDecoration(color: ownerColor, borderRadius: BorderRadius.circular(4)),
-                              child: Text(ownerName.length > 6 ? ownerName.substring(0,6) : ownerName, style: const TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold)),
-                            )
-                        ],
-                      ),
-                      title: Text(c.customerName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Text('${c.gender == 'male' ? 'ذكر' : 'أنثى'} | رمز: ${c.accountCode}'),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children:[
-                          Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children:[
-                              const Text('الرصيد', style: TextStyle(fontSize: 10, color: Colors.grey)),
-                              Text(NumberFormat('#,##0.##').format(c.balance), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: c.balance > 0 ? Colors.red : Colors.green)),
-                            ],
-                          ),
-                          if (canEdit || canDelete)
-                            PopupMenuButton<String>(
-                              onSelected: (val) {
-                                if (val == 'edit' && canEdit) {
-                                  context.push(AppRoutes.customerForm, extra: {'customer': c, 'targetDelegateId': c.delegateId});
-                                }
-                                if (val == 'delete' && canDelete) {
-                                  showDialog(context: context, builder: (ctx) => AlertDialog(
-                                      title: const Text('تأكيد الحذف'),
-                                      content: const Text('هل أنت متأكد من حذف هذا الزبون نهائياً؟'),
-                                      actions:[
-                                        TextButton(onPressed: ()=>Navigator.pop(ctx), child: const Text('إلغاء')),
-                                        ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.red), onPressed: (){cubit.deleteCustomer(c.id); Navigator.pop(ctx);}, child: const Text('حذف', style: TextStyle(color: Colors.white))),
-                                      ]
-                                  ));
-                                }
-                              },
-                              itemBuilder: (ctx) =>[
-                                if(canEdit) const PopupMenuItem(value: 'edit', child: Text('تعديل')),
-                                if(canDelete) const PopupMenuItem(value: 'delete', child: Text('حذف', style: TextStyle(color: Colors.red))),
+                    // إخفاء البادئة من واجهة العرض بأمان
+                    String displayTitle = c.customerName;
+                    if (ownerSuffix.isNotEmpty && displayTitle.startsWith(ownerSuffix)) {
+                      displayTitle = displayTitle.replaceFirst(ownerSuffix, '').trim();
+                    }
+
+                    return Card(
+                      color: isSelected ? Colors.teal.shade50 : Colors.white,
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        onLongPress: () => cubit.toggleSelectionMode(c.id),
+                        onTap: () {
+                          if (cubit.isSelectionMode) cubit.toggleSelection(c.id);
+                        },
+                        leading: isSelected
+                            ? const CircleAvatar(backgroundColor: Colors.teal, child: Icon(Icons.check, color: Colors.white))
+                            : Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children:[
+                            CircleAvatar(radius: 16, backgroundColor: Colors.teal.shade100, child: Icon(c.gender == 'male' ? Icons.person : Icons.person_3, color: Colors.teal, size: 20)),
+                            if (!isMine)
+                              Container(
+                                margin: const EdgeInsets.only(top: 4),
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                decoration: BoxDecoration(color: ownerColor, borderRadius: BorderRadius.circular(4)),
+                                child: Text(ownerName.length > 6 ? ownerName.substring(0,6) : ownerName, style: const TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold)),
+                              )
+                          ],
+                        ),
+                        title: Text(displayTitle, style: const TextStyle(fontWeight: FontWeight.bold)), // استخدمنا الاسم الصافي
+                        subtitle: Text('${c.gender == 'male' ? 'ذكر' : 'أنثى'} | رمز: ${c.accountCode}'),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children:[
+                            Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children:[
+                                const Text('الرصيد', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                                Text(NumberFormat('#,##0.##').format(c.balance), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: c.balance > 0 ? Colors.red : Colors.green)),
                               ],
-                            )
-                        ],
+                            ),
+                            if (canEdit || canDelete)
+                              PopupMenuButton<String>(
+                                onSelected: (val) {
+                                  if (val == 'edit' && canEdit) {
+                                    context.push(AppRoutes.customerForm, extra: {
+                                      'customer': c,
+                                      'targetDelegateId': c.delegateId,
+                                      'ownerSuffix': ownerSuffix, // تمرير البادئة ليتم إخفاؤها في نافذة التعديل
+                                    });
+                                  }
+                                  if (val == 'delete' && canDelete) {
+                                    showDialog(context: context, builder: (ctx) => AlertDialog(
+                                        title: const Text('تأكيد الحذف'),
+                                        content: const Text('هل أنت متأكد من حذف هذا الزبون نهائياً؟'),
+                                        actions:[
+                                          TextButton(onPressed: ()=>Navigator.pop(ctx), child: const Text('إلغاء')),
+                                          ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.red), onPressed: (){cubit.deleteCustomer(c.id); Navigator.pop(ctx);}, child: const Text('حذف', style: TextStyle(color: Colors.white))),
+                                        ]
+                                    ));
+                                  }
+                                },
+                                itemBuilder: (ctx) =>[
+                                  if(canEdit) const PopupMenuItem(value: 'edit', child: Text('تعديل')),
+                                  if(canDelete) const PopupMenuItem(value: 'delete', child: Text('حذف', style: TextStyle(color: Colors.red))),
+                                ],
+                              )
+                          ],
+                        ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               );
             }
             return const SizedBox.shrink();

@@ -146,14 +146,14 @@ class MyApp extends StatelessWidget {
       GoRoute(
           path: AppRoutes.customerForm,
           builder: (context, state) {
-            // جلب البيانات الممررة من شاشة الزبائن بأمان تام
-            final extra = state.extra as Map<String, dynamic>?;
-            final target = extra != null ? extra['targetDelegateId'] as String? : null;
-            final customer = extra != null ? extra['customer'] as CustomerModel? : null;
-
+            final extra = state.extra as Map<String, dynamic>? ?? {};
+            final target = extra['targetDelegateId'] as String?;
+            final customer = extra['customer'] as CustomerModel?;
+            final ownerSuffix = extra['ownerSuffix'] as String? ?? ''; // جلب البادئة
             return CustomerFormScreen(
-              customerToEdit: customer, // هنا نمرر الزبون للتعديل
+              customerToEdit: customer,
               targetDelegateId: target,
+              ownerSuffix: ownerSuffix, // تمريرها
             );
           }
       ),
