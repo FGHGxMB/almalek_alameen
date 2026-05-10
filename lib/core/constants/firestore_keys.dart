@@ -67,6 +67,9 @@ class FirestoreKeys {
   static const String shopPrice3 = 'shop_price3';
   static const String consumerPrice3 = 'consumer_price3';
   static const String defaultUnit = 'default_unit';
+  static const String minPrice1 = 'min_price1';
+  static const String minPrice2 = 'min_price2';
+  static const String minPrice3 = 'min_price3';
 
   // New Product Display Fields (Tabs & Columns)
   static const String tabName = 'tab_name';

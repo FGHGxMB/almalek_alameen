@@ -30,20 +30,13 @@ class ReceiptFormCubit extends Cubit<ReceiptFormState> {
   StreamSubscription? _customersSub;
   List<CustomerModel> _customers =[];
 
-  ReceiptFormCubit(
-      this._customersRepo,
-      this._transactionsRepo,
-      this.currentUser
-      ) : super(ReceiptFormInitial()) {
-    _loadCustomers();
-  }
+  ReceiptFormCubit(this._customersRepo, this._transactionsRepo, this.currentUser) : super(ReceiptFormInitial());
 
-  void _loadCustomers() {
+  void initData({ReceiptModel? receiptToEdit}) {
     emit(ReceiptFormLoading());
-    // جلب زبائن المندوب وزبائن المندوبين الذين يراقبهم
     _customersSub = _customersRepo.getCustomersStream(currentUser).listen(
             (customers) {
-          _customers = customers;
+          _customers = customers.where((c) => c.delegateId == currentUser.id).toList(); // زبائني فقط
           emit(ReceiptFormReady(_customers));
         },
         onError: (e) {
@@ -56,32 +49,47 @@ class ReceiptFormCubit extends Cubit<ReceiptFormState> {
     required CustomerModel selectedCustomer,
     required double amount,
     required String note,
+    ReceiptModel? oldReceipt,
   }) async {
     emit(ReceiptFormLoading());
     try {
       final receipt = ReceiptModel(
-        id: '', // سيتم إنشاؤه تلقائياً في المستودع
-        receiptNumber: 0,
-        delegateReceiptNumber: 0,
-        creditorAccount: selectedCustomer.id, // الزبون الذي دفع
-        debtorAccount: currentUser.id, // الصندوق/المندوب المستلم
+        id: oldReceipt?.id ?? '',
+        receiptNumber: oldReceipt?.receiptNumber ?? 0,
+        delegateReceiptNumber: oldReceipt?.delegateReceiptNumber ?? 0,
+        creditorAccount: selectedCustomer.id,
+        debtorAccount: currentUser.id,
         amount: amount,
         lineNote: note,
         costCenterCode: currentUser.costCenterCode,
-        date: DateTime.now(),
+        date: oldReceipt?.date ?? DateTime.now(),
         isSynced: false,
         pendingAction: '',
-        createdAt: DateTime.now(),
+        createdAt: oldReceipt?.createdAt ?? DateTime.now(),
         updatedAt: DateTime.now(),
-        delegateId: currentUser.id,
+        delegateId: oldReceipt?.delegateId ?? currentUser.id,
       );
 
-      // عملية الإنشاء تمر عبر الـ Batch للتأثير على الكاش ورصيد الزبون
-      await _transactionsRepo.createReceipt(receipt, currentUser);
+      if (oldReceipt == null) {
+        _transactionsRepo.createReceipt(receipt, currentUser); // بدون await لتغلق بسرعة
+      } else {
+        _transactionsRepo.updateReceipt(oldReceipt, receipt);
+      }
 
       emit(ReceiptFormSuccess());
     } catch (e) {
       emit(ReceiptFormError('حدث خطأ أثناء الحفظ: $e'));
+      emit(ReceiptFormReady(_customers));
+    }
+  }
+
+  Future<void> deleteReceipt(ReceiptModel receipt) async {
+    emit(ReceiptFormLoading());
+    try {
+      _transactionsRepo.deleteReceipt(receipt);
+      emit(ReceiptFormSuccess());
+    } catch (e) {
+      emit(ReceiptFormError('خطأ أثناء الحذف: $e'));
       emit(ReceiptFormReady(_customers));
     }
   }

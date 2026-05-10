@@ -18,6 +18,8 @@ class ReceiptModel {
   final DateTime createdAt;
   final DateTime updatedAt;
   final String delegateId;
+  final String printAddress;
+  final String printPhone;
 
   ReceiptModel({
     required this.id, required this.receiptNumber, required this.delegateReceiptNumber,
@@ -25,6 +27,8 @@ class ReceiptModel {
     required this.lineNote, required this.costCenterCode, required this.date,
     required this.isSynced, required this.pendingAction, required this.createdAt,
     required this.updatedAt, required this.delegateId,
+    this.printAddress = '',
+    this.printPhone = '',
   });
 
   factory ReceiptModel.fromFirestore(DocumentSnapshot doc) {
@@ -40,11 +44,13 @@ class ReceiptModel {
       lineNote: data[FirestoreKeys.lineNote] ?? '',
       costCenterCode: data[FirestoreKeys.costCenterCode] ?? '',
       date: (data[FirestoreKeys.date] as Timestamp?)?.toDate() ?? DateTime.now(),
-      isSynced: data[FirestoreKeys.isSynced] ?? true,
+      isSynced: !doc.metadata.hasPendingWrites,
       pendingAction: data[FirestoreKeys.pendingAction] ?? '',
       createdAt: (data[FirestoreKeys.createdAt] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (data[FirestoreKeys.updatedAt] as Timestamp?)?.toDate() ?? DateTime.now(),
       delegateId: data[FirestoreKeys.delegateId] ?? '',
+      printAddress: data['print_address'] ?? '',
+      printPhone: data['print_phone'] ?? '',
     );
   }
 
@@ -63,6 +69,8 @@ class ReceiptModel {
       FirestoreKeys.createdAt: Timestamp.fromDate(createdAt),
       FirestoreKeys.updatedAt: Timestamp.fromDate(updatedAt),
       FirestoreKeys.delegateId: delegateId,
+      'print_address': printAddress,
+      'print_phone': printPhone,
     };
   }
 

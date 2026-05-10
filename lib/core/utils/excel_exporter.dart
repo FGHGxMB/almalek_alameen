@@ -11,7 +11,7 @@ import '../../data/models/receipt_model.dart';
 import '../../data/models/customer_model.dart';
 
 class ExcelExporter {
-  // 1. تصدير المعاملات (فواتير، مرتجعات، سندات) في ملف واحد بـ 3 شيتات
+  // 1. تصدير المعاملات (فواتير، مرتجعات، سندات) في ملف واحد
   static Future<void> exportTransactions({
     required List<InvoiceModel> invoices,
     required List<ReturnModel> returns,
@@ -19,11 +19,11 @@ class ExcelExporter {
   }) async {
     var excel = Excel.createExcel();
 
-    // ------------------ شيت الفواتير ------------------
-    Sheet invoiceSheet = excel['فواتير'];
+    // إنشاء الشيتات مباشرة بدون حذف أو تعديل الافتراضي لتجنب خطأ الحزمة
+    Sheet invoiceSheet = excel['فواتير المبيعات'];
     _appendRow(invoiceSheet, 0,[
       'رقم الفاتورة', 'رقم فاتورة المندوب', 'التاريخ', 'رمز الزبون', 'اسم الزبون',
-      'المندوب', 'رمز المادة', 'الكمية', 'الوحدة', 'السعر', 'الحسم', 'طريقة الدفع',
+      'المندوب', 'رمز المادة (ID)', 'الكمية', 'الوحدة', 'السعر', 'الحسم', 'طريقة الدفع',
       'مركز الكلفة', 'المستودع'
     ]);
 
@@ -31,20 +31,30 @@ class ExcelExporter {
     for (var inv in invoices) {
       for (var item in inv.items) {
         _appendRow(invoiceSheet, invRow,[
-          inv.invoiceNumber, inv.delegateInvoiceNumber, _formatDate(inv.invoiceDate),
-          inv.customerId, inv.customerName, inv.delegateId, item.productId,
-          item.quantity, item.unit, item.price, inv.discount,
-          inv.paymentMethod == 'cash' ? 'نقدي' : 'آجل', inv.costCenterCode, inv.warehouseCode
+          inv.invoiceNumber == 0 ? 'غير مزامن' : inv.invoiceNumber,
+          inv.delegateInvoiceNumber,
+          _formatDate(inv.invoiceDate),
+          inv.customerId.isEmpty ? 'زبون نقدي' : inv.customerId,
+          inv.customerName,
+          inv.delegateId,
+          item.productId,
+          item.quantity,
+          item.unit,
+          item.price,
+          inv.discount,
+          inv.paymentMethod == 'cash' ? 'نقدي' : (inv.paymentMethod == 'gift' ? 'هدية' : 'آجل'),
+          inv.costCenterCode,
+          inv.warehouseCode
         ]);
         invRow++;
       }
     }
 
     // ------------------ شيت المرتجعات ------------------
-    Sheet returnSheet = excel['مرتجعات'];
+    Sheet returnSheet = excel['مرتجعات المبيعات'];
     _appendRow(returnSheet, 0,[
       'رقم المرتجع', 'رقم مرتجع المندوب', 'التاريخ', 'رمز الزبون', 'اسم الزبون',
-      'المندوب', 'رقم الفاتورة الأصلية', 'رمز المادة', 'الكمية', 'الوحدة', 'السعر',
+      'المندوب', 'رمز المادة (ID)', 'الكمية', 'الوحدة', 'السعر',
       'طريقة الدفع', 'مركز الكلفة', 'المستودع'
     ]);
 
@@ -52,17 +62,26 @@ class ExcelExporter {
     for (var ret in returns) {
       for (var item in ret.items) {
         _appendRow(returnSheet, retRow,[
-          ret.returnNumber, ret.delegateReturnNumber, _formatDate(ret.returnDate),
-          ret.customerId, ret.customerName, ret.delegateId, ret.invoiceRef,
-          item.productId, item.quantity, item.unit, item.price,
-          ret.paymentMethod == 'cash' ? 'نقدي' : 'آجل', ret.costCenterCode, ret.warehouseCode
+          ret.returnNumber == 0 ? 'غير مزامن' : ret.returnNumber,
+          ret.delegateReturnNumber,
+          _formatDate(ret.returnDate),
+          ret.customerId,
+          ret.customerName,
+          ret.delegateId,
+          item.productId,
+          item.quantity,
+          item.unit,
+          item.price,
+          ret.paymentMethod == 'cash' ? 'نقدي' : 'آجل',
+          ret.costCenterCode,
+          ret.warehouseCode
         ]);
         retRow++;
       }
     }
 
     // ------------------ شيت السندات ------------------
-    Sheet receiptSheet = excel['سندات'];
+    Sheet receiptSheet = excel['سندات القبض'];
     _appendRow(receiptSheet, 0,[
       'رقم السند', 'رقم سند المندوب', 'التاريخ', 'المندوب', 'الحساب الدائن',
       'الحساب المدين', 'المبلغ', 'البيان', 'مركز الكلفة'
@@ -71,14 +90,20 @@ class ExcelExporter {
     int recRow = 1;
     for (var rec in receipts) {
       _appendRow(receiptSheet, recRow,[
-        rec.receiptNumber, rec.delegateReceiptNumber, _formatDate(rec.date),
-        rec.delegateId, rec.creditorAccount, rec.debtorAccount, rec.amount,
-        rec.lineNote, rec.costCenterCode
+        rec.receiptNumber == 0 ? 'غير مزامن' : rec.receiptNumber,
+        rec.delegateReceiptNumber,
+        _formatDate(rec.date),
+        rec.delegateId,
+        rec.creditorAccount,
+        rec.debtorAccount,
+        rec.amount,
+        rec.lineNote,
+        rec.costCenterCode
       ]);
       recRow++;
     }
 
-    excel.delete('Sheet1'); // حذف الشيت الافتراضي الفارغ
+    // حفظ الملف ومشاركته مباشرة (تم إلغاء سطر الحذف لحل المشكلة)
     await _saveAndShare(excel, 'Transactions_Export_${_formatDate(DateTime.now())}.xlsx');
   }
 
@@ -86,9 +111,7 @@ class ExcelExporter {
   static Future<void> exportCustomers(List<CustomerModel> customers) async {
     var excel = Excel.createExcel();
 
-    // الحل الآمن: نأخذ الشيت الافتراضي الموجود أصلاً (Sheet1) للتعامل معه
-    String defaultSheet = excel.getDefaultSheet() ?? 'Sheet1';
-    Sheet sheet = excel[defaultSheet];
+    Sheet sheet = excel['قائمة الزبائن'];
 
     _appendRow(sheet, 0,[
       'رمز الحساب', 'الاسم', 'المنطقة', 'الجنس', 'الهاتف1', 'الهاتف2',
@@ -104,18 +127,23 @@ class ExcelExporter {
       row++;
     }
 
-    // حفظ الملف ومشاركته
+    // حفظ الملف ومشاركته مباشرة (تم إلغاء سطر الحذف لحل المشكلة)
     await _saveAndShare(excel, 'Customers_Export_${_formatDate(DateTime.now())}.xlsx');
   }
 
-  // دوال مساعدة لترتيب وتنسيق الإكسل (تم تعديلها لتتوافق مع الإصدار الموجود لديك مباشرة)
+  // دالة مساعدة مدرعة 100% ضد الأخطاء والقيم الفارغة
   static void _appendRow(Sheet sheet, int rowIndex, List<dynamic> rowData) {
     for (int colIndex = 0; colIndex < rowData.length; colIndex++) {
       var cellValue = rowData[colIndex];
       var cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: colIndex, rowIndex: rowIndex));
 
-      // التعيين المباشر للقيمة وهو ما تتطلبه النسخة المثبتة لديك
-      cell.value = cellValue;
+      if (cellValue == null) {
+        cell.value = '';
+      } else if (cellValue is int || cellValue is double) {
+        cell.value = cellValue; // الأرقام تُحفظ كأرقام لتتمكن من جمعها في الإكسل
+      } else {
+        cell.value = cellValue.toString(); // تحويل الباقي لنص آمن
+      }
     }
   }
 
@@ -130,7 +158,7 @@ class ExcelExporter {
       await file.writeAsBytes(fileBytes);
 
       // مشاركة الملف المُصدّر
-      await Share.shareXFiles([XFile(filePath)], text: 'مرفق ملف البيانات');
+      await Share.shareXFiles([XFile(filePath)], text: 'مرفق تقرير البيانات');
     }
   }
 }

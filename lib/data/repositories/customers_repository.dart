@@ -13,7 +13,8 @@ class CustomersRepository {
     final delegateIds = [currentUser.id, ...currentUser.canMonitor];
     return _firestore.collection(FirestoreKeys.customers)
         .where(FirestoreKeys.delegateId, whereIn: delegateIds)
-        .snapshots().map((snapshot) => snapshot.docs.map((doc) => CustomerModel.fromFirestore(doc)).toList());
+        .snapshots(includeMetadataChanges: true) // <--- السحر هنا!
+        .map((snapshot) => snapshot.docs.map((doc) => CustomerModel.fromFirestore(doc)).toList());
   }
 
   // دالة فحص الاسم المكرر
@@ -57,7 +58,8 @@ class CustomersRepository {
       id: newCustomerRef.id, accountCode: accountCode, customerName: fullName, phone1: phone1, phone2: phone2, email: email,
       notes: notes, country: country, city: city, region: region, district: district, street: street, gender: gender,
       previousBalance: previousBalance, balance: previousBalance, delegateId: targetDelegateId,
-      lastTransactionDate: DateTime.now(), // افتراضي عند الإنشاء
+      lastTransactionDate: DateTime.now(),
+      isSynced: false,
     );
 
     batch.set(newCustomerRef, newCustomer.toFirestore());

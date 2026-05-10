@@ -21,6 +21,7 @@ class CustomerModel {
   final double balance;
   final String delegateId;
   final DateTime lastTransactionDate;
+  final bool isSynced;
 
   CustomerModel({
     required this.id,
@@ -40,6 +41,7 @@ class CustomerModel {
     required this.balance,
     required this.delegateId,
     required this.lastTransactionDate,
+    required this.isSynced,
   });
 
   factory CustomerModel.fromFirestore(DocumentSnapshot doc) {
@@ -62,6 +64,7 @@ class CustomerModel {
       balance: (data[FirestoreKeys.balance] ?? 0).toDouble(),
       delegateId: data[FirestoreKeys.delegateId] ?? '',
       lastTransactionDate: (data[FirestoreKeys.lastTransactionDate] as Timestamp?)?.toDate() ?? DateTime.now(),
+      isSynced: !doc.metadata.hasPendingWrites,
     );
   }
 
@@ -91,6 +94,7 @@ class CustomerModel {
     String? email, String? notes, String? country, String? city, String? region,
     String? district, String? street, String? gender, double? previousBalance,
     double? balance, String? delegateId, DateTime? lastTransactionDate, // أضفنا المتغير هنا
+    bool? isSynced,
   }) {
     return CustomerModel(
       id: id ?? this.id, accountCode: accountCode ?? this.accountCode, customerName: customerName ?? this.customerName,
@@ -100,6 +104,7 @@ class CustomerModel {
       gender: gender ?? this.gender, previousBalance: previousBalance ?? this.previousBalance,
       balance: balance ?? this.balance, delegateId: delegateId ?? this.delegateId,
       lastTransactionDate: lastTransactionDate ?? this.lastTransactionDate, // أضفنا القيمة هنا
+      isSynced: isSynced ?? this.isSynced,
     );
   }
 }

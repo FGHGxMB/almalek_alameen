@@ -22,6 +22,8 @@ class InvoiceModel {
   final DateTime updatedAt;
   final String delegateId;
   final List<TransactionItemModel> items;
+  final String printAddress;
+  final String printPhone;
 
   InvoiceModel({
     required this.id, required this.invoiceNumber, required this.delegateInvoiceNumber,
@@ -30,6 +32,8 @@ class InvoiceModel {
     required this.discount, required this.costCenterCode, required this.isSynced,
     required this.pendingAction, required this.createdAt, required this.updatedAt,
     required this.delegateId, required this.items,
+    this.printAddress = '',
+    this.printPhone = '',
   });
 
   factory InvoiceModel.fromFirestore(DocumentSnapshot doc) {
@@ -47,7 +51,7 @@ class InvoiceModel {
       invoiceNote: data[FirestoreKeys.invoiceNote] ?? '',
       discount: (data[FirestoreKeys.discount] ?? 0).toDouble(),
       costCenterCode: data[FirestoreKeys.costCenterCode] ?? '',
-      isSynced: data[FirestoreKeys.isSynced] ?? true,
+      isSynced: !doc.metadata.hasPendingWrites,
       pendingAction: data[FirestoreKeys.pendingAction] ?? '',
       createdAt: (data[FirestoreKeys.createdAt] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (data[FirestoreKeys.updatedAt] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -55,6 +59,8 @@ class InvoiceModel {
       items: (data[FirestoreKeys.items] as List<dynamic>?)
           ?.map((item) => TransactionItemModel.fromMap(item as Map<String, dynamic>))
           .toList() ??[],
+      printAddress: data['print_address'] ?? '',
+      printPhone: data['print_phone'] ?? '',
     );
   }
 
@@ -76,6 +82,8 @@ class InvoiceModel {
       FirestoreKeys.updatedAt: Timestamp.fromDate(updatedAt),
       FirestoreKeys.delegateId: delegateId,
       FirestoreKeys.items: items.map((e) => e.toMap()).toList(),
+      'print_address': printAddress,
+      'print_phone': printPhone,
     };
   }
 

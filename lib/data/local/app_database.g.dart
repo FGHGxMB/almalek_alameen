@@ -140,6 +140,30 @@ class $ProductsTableTable extends ProductsTable
   late final GeneratedColumn<double> consumerPrice3 = GeneratedColumn<double>(
       'consumer_price3', aliasedName, false,
       type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _minPrice1Meta =
+      const VerificationMeta('minPrice1');
+  @override
+  late final GeneratedColumn<double> minPrice1 = GeneratedColumn<double>(
+      'min_price1', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0.0));
+  static const VerificationMeta _minPrice2Meta =
+      const VerificationMeta('minPrice2');
+  @override
+  late final GeneratedColumn<double> minPrice2 = GeneratedColumn<double>(
+      'min_price2', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0.0));
+  static const VerificationMeta _minPrice3Meta =
+      const VerificationMeta('minPrice3');
+  @override
+  late final GeneratedColumn<double> minPrice3 = GeneratedColumn<double>(
+      'min_price3', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0.0));
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -163,7 +187,10 @@ class $ProductsTableTable extends ProductsTable
         unit3,
         barcode3,
         shopPrice3,
-        consumerPrice3
+        consumerPrice3,
+        minPrice1,
+        minPrice2,
+        minPrice3
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -324,6 +351,18 @@ class $ProductsTableTable extends ProductsTable
     } else if (isInserting) {
       context.missing(_consumerPrice3Meta);
     }
+    if (data.containsKey('min_price1')) {
+      context.handle(_minPrice1Meta,
+          minPrice1.isAcceptableOrUnknown(data['min_price1']!, _minPrice1Meta));
+    }
+    if (data.containsKey('min_price2')) {
+      context.handle(_minPrice2Meta,
+          minPrice2.isAcceptableOrUnknown(data['min_price2']!, _minPrice2Meta));
+    }
+    if (data.containsKey('min_price3')) {
+      context.handle(_minPrice3Meta,
+          minPrice3.isAcceptableOrUnknown(data['min_price3']!, _minPrice3Meta));
+    }
     return context;
   }
 
@@ -377,6 +416,12 @@ class $ProductsTableTable extends ProductsTable
           .read(DriftSqlType.double, data['${effectivePrefix}shop_price3'])!,
       consumerPrice3: attachedDatabase.typeMapping.read(
           DriftSqlType.double, data['${effectivePrefix}consumer_price3'])!,
+      minPrice1: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}min_price1'])!,
+      minPrice2: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}min_price2'])!,
+      minPrice3: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}min_price3'])!,
     );
   }
 
@@ -410,6 +455,9 @@ class ProductsTableData extends DataClass
   final String barcode3;
   final double shopPrice3;
   final double consumerPrice3;
+  final double minPrice1;
+  final double minPrice2;
+  final double minPrice3;
   const ProductsTableData(
       {required this.id,
       required this.itemCode,
@@ -432,7 +480,10 @@ class ProductsTableData extends DataClass
       required this.unit3,
       required this.barcode3,
       required this.shopPrice3,
-      required this.consumerPrice3});
+      required this.consumerPrice3,
+      required this.minPrice1,
+      required this.minPrice2,
+      required this.minPrice3});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -458,6 +509,9 @@ class ProductsTableData extends DataClass
     map['barcode3'] = Variable<String>(barcode3);
     map['shop_price3'] = Variable<double>(shopPrice3);
     map['consumer_price3'] = Variable<double>(consumerPrice3);
+    map['min_price1'] = Variable<double>(minPrice1);
+    map['min_price2'] = Variable<double>(minPrice2);
+    map['min_price3'] = Variable<double>(minPrice3);
     return map;
   }
 
@@ -485,6 +539,9 @@ class ProductsTableData extends DataClass
       barcode3: Value(barcode3),
       shopPrice3: Value(shopPrice3),
       consumerPrice3: Value(consumerPrice3),
+      minPrice1: Value(minPrice1),
+      minPrice2: Value(minPrice2),
+      minPrice3: Value(minPrice3),
     );
   }
 
@@ -514,6 +571,9 @@ class ProductsTableData extends DataClass
       barcode3: serializer.fromJson<String>(json['barcode3']),
       shopPrice3: serializer.fromJson<double>(json['shopPrice3']),
       consumerPrice3: serializer.fromJson<double>(json['consumerPrice3']),
+      minPrice1: serializer.fromJson<double>(json['minPrice1']),
+      minPrice2: serializer.fromJson<double>(json['minPrice2']),
+      minPrice3: serializer.fromJson<double>(json['minPrice3']),
     );
   }
   @override
@@ -542,6 +602,9 @@ class ProductsTableData extends DataClass
       'barcode3': serializer.toJson<String>(barcode3),
       'shopPrice3': serializer.toJson<double>(shopPrice3),
       'consumerPrice3': serializer.toJson<double>(consumerPrice3),
+      'minPrice1': serializer.toJson<double>(minPrice1),
+      'minPrice2': serializer.toJson<double>(minPrice2),
+      'minPrice3': serializer.toJson<double>(minPrice3),
     };
   }
 
@@ -567,7 +630,10 @@ class ProductsTableData extends DataClass
           String? unit3,
           String? barcode3,
           double? shopPrice3,
-          double? consumerPrice3}) =>
+          double? consumerPrice3,
+          double? minPrice1,
+          double? minPrice2,
+          double? minPrice3}) =>
       ProductsTableData(
         id: id ?? this.id,
         itemCode: itemCode ?? this.itemCode,
@@ -591,6 +657,9 @@ class ProductsTableData extends DataClass
         barcode3: barcode3 ?? this.barcode3,
         shopPrice3: shopPrice3 ?? this.shopPrice3,
         consumerPrice3: consumerPrice3 ?? this.consumerPrice3,
+        minPrice1: minPrice1 ?? this.minPrice1,
+        minPrice2: minPrice2 ?? this.minPrice2,
+        minPrice3: minPrice3 ?? this.minPrice3,
       );
   ProductsTableData copyWithCompanion(ProductsTableCompanion data) {
     return ProductsTableData(
@@ -629,6 +698,9 @@ class ProductsTableData extends DataClass
       consumerPrice3: data.consumerPrice3.present
           ? data.consumerPrice3.value
           : this.consumerPrice3,
+      minPrice1: data.minPrice1.present ? data.minPrice1.value : this.minPrice1,
+      minPrice2: data.minPrice2.present ? data.minPrice2.value : this.minPrice2,
+      minPrice3: data.minPrice3.present ? data.minPrice3.value : this.minPrice3,
     );
   }
 
@@ -656,7 +728,10 @@ class ProductsTableData extends DataClass
           ..write('unit3: $unit3, ')
           ..write('barcode3: $barcode3, ')
           ..write('shopPrice3: $shopPrice3, ')
-          ..write('consumerPrice3: $consumerPrice3')
+          ..write('consumerPrice3: $consumerPrice3, ')
+          ..write('minPrice1: $minPrice1, ')
+          ..write('minPrice2: $minPrice2, ')
+          ..write('minPrice3: $minPrice3')
           ..write(')'))
         .toString();
   }
@@ -684,7 +759,10 @@ class ProductsTableData extends DataClass
         unit3,
         barcode3,
         shopPrice3,
-        consumerPrice3
+        consumerPrice3,
+        minPrice1,
+        minPrice2,
+        minPrice3
       ]);
   @override
   bool operator ==(Object other) =>
@@ -711,7 +789,10 @@ class ProductsTableData extends DataClass
           other.unit3 == this.unit3 &&
           other.barcode3 == this.barcode3 &&
           other.shopPrice3 == this.shopPrice3 &&
-          other.consumerPrice3 == this.consumerPrice3);
+          other.consumerPrice3 == this.consumerPrice3 &&
+          other.minPrice1 == this.minPrice1 &&
+          other.minPrice2 == this.minPrice2 &&
+          other.minPrice3 == this.minPrice3);
 }
 
 class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
@@ -737,6 +818,9 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
   final Value<String> barcode3;
   final Value<double> shopPrice3;
   final Value<double> consumerPrice3;
+  final Value<double> minPrice1;
+  final Value<double> minPrice2;
+  final Value<double> minPrice3;
   final Value<int> rowid;
   const ProductsTableCompanion({
     this.id = const Value.absent(),
@@ -761,6 +845,9 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
     this.barcode3 = const Value.absent(),
     this.shopPrice3 = const Value.absent(),
     this.consumerPrice3 = const Value.absent(),
+    this.minPrice1 = const Value.absent(),
+    this.minPrice2 = const Value.absent(),
+    this.minPrice3 = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ProductsTableCompanion.insert({
@@ -786,6 +873,9 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
     required String barcode3,
     required double shopPrice3,
     required double consumerPrice3,
+    this.minPrice1 = const Value.absent(),
+    this.minPrice2 = const Value.absent(),
+    this.minPrice3 = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         itemCode = Value(itemCode),
@@ -832,6 +922,9 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
     Expression<String>? barcode3,
     Expression<double>? shopPrice3,
     Expression<double>? consumerPrice3,
+    Expression<double>? minPrice1,
+    Expression<double>? minPrice2,
+    Expression<double>? minPrice3,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -857,6 +950,9 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
       if (barcode3 != null) 'barcode3': barcode3,
       if (shopPrice3 != null) 'shop_price3': shopPrice3,
       if (consumerPrice3 != null) 'consumer_price3': consumerPrice3,
+      if (minPrice1 != null) 'min_price1': minPrice1,
+      if (minPrice2 != null) 'min_price2': minPrice2,
+      if (minPrice3 != null) 'min_price3': minPrice3,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -884,6 +980,9 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
       Value<String>? barcode3,
       Value<double>? shopPrice3,
       Value<double>? consumerPrice3,
+      Value<double>? minPrice1,
+      Value<double>? minPrice2,
+      Value<double>? minPrice3,
       Value<int>? rowid}) {
     return ProductsTableCompanion(
       id: id ?? this.id,
@@ -908,6 +1007,9 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
       barcode3: barcode3 ?? this.barcode3,
       shopPrice3: shopPrice3 ?? this.shopPrice3,
       consumerPrice3: consumerPrice3 ?? this.consumerPrice3,
+      minPrice1: minPrice1 ?? this.minPrice1,
+      minPrice2: minPrice2 ?? this.minPrice2,
+      minPrice3: minPrice3 ?? this.minPrice3,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -981,6 +1083,15 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
     if (consumerPrice3.present) {
       map['consumer_price3'] = Variable<double>(consumerPrice3.value);
     }
+    if (minPrice1.present) {
+      map['min_price1'] = Variable<double>(minPrice1.value);
+    }
+    if (minPrice2.present) {
+      map['min_price2'] = Variable<double>(minPrice2.value);
+    }
+    if (minPrice3.present) {
+      map['min_price3'] = Variable<double>(minPrice3.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1012,6 +1123,9 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
           ..write('barcode3: $barcode3, ')
           ..write('shopPrice3: $shopPrice3, ')
           ..write('consumerPrice3: $consumerPrice3, ')
+          ..write('minPrice1: $minPrice1, ')
+          ..write('minPrice2: $minPrice2, ')
+          ..write('minPrice3: $minPrice3, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1053,6 +1167,9 @@ typedef $$ProductsTableTableCreateCompanionBuilder = ProductsTableCompanion
   required String barcode3,
   required double shopPrice3,
   required double consumerPrice3,
+  Value<double> minPrice1,
+  Value<double> minPrice2,
+  Value<double> minPrice3,
   Value<int> rowid,
 });
 typedef $$ProductsTableTableUpdateCompanionBuilder = ProductsTableCompanion
@@ -1079,6 +1196,9 @@ typedef $$ProductsTableTableUpdateCompanionBuilder = ProductsTableCompanion
   Value<String> barcode3,
   Value<double> shopPrice3,
   Value<double> consumerPrice3,
+  Value<double> minPrice1,
+  Value<double> minPrice2,
+  Value<double> minPrice3,
   Value<int> rowid,
 });
 
@@ -1159,6 +1279,15 @@ class $$ProductsTableTableFilterComposer
   ColumnFilters<double> get consumerPrice3 => $composableBuilder(
       column: $table.consumerPrice3,
       builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get minPrice1 => $composableBuilder(
+      column: $table.minPrice1, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get minPrice2 => $composableBuilder(
+      column: $table.minPrice2, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get minPrice3 => $composableBuilder(
+      column: $table.minPrice3, builder: (column) => ColumnFilters(column));
 }
 
 class $$ProductsTableTableOrderingComposer
@@ -1239,6 +1368,15 @@ class $$ProductsTableTableOrderingComposer
   ColumnOrderings<double> get consumerPrice3 => $composableBuilder(
       column: $table.consumerPrice3,
       builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get minPrice1 => $composableBuilder(
+      column: $table.minPrice1, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get minPrice2 => $composableBuilder(
+      column: $table.minPrice2, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get minPrice3 => $composableBuilder(
+      column: $table.minPrice3, builder: (column) => ColumnOrderings(column));
 }
 
 class $$ProductsTableTableAnnotationComposer
@@ -1315,6 +1453,15 @@ class $$ProductsTableTableAnnotationComposer
 
   GeneratedColumn<double> get consumerPrice3 => $composableBuilder(
       column: $table.consumerPrice3, builder: (column) => column);
+
+  GeneratedColumn<double> get minPrice1 =>
+      $composableBuilder(column: $table.minPrice1, builder: (column) => column);
+
+  GeneratedColumn<double> get minPrice2 =>
+      $composableBuilder(column: $table.minPrice2, builder: (column) => column);
+
+  GeneratedColumn<double> get minPrice3 =>
+      $composableBuilder(column: $table.minPrice3, builder: (column) => column);
 }
 
 class $$ProductsTableTableTableManager extends RootTableManager<
@@ -1365,6 +1512,9 @@ class $$ProductsTableTableTableManager extends RootTableManager<
             Value<String> barcode3 = const Value.absent(),
             Value<double> shopPrice3 = const Value.absent(),
             Value<double> consumerPrice3 = const Value.absent(),
+            Value<double> minPrice1 = const Value.absent(),
+            Value<double> minPrice2 = const Value.absent(),
+            Value<double> minPrice3 = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               ProductsTableCompanion(
@@ -1390,6 +1540,9 @@ class $$ProductsTableTableTableManager extends RootTableManager<
             barcode3: barcode3,
             shopPrice3: shopPrice3,
             consumerPrice3: consumerPrice3,
+            minPrice1: minPrice1,
+            minPrice2: minPrice2,
+            minPrice3: minPrice3,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -1415,6 +1568,9 @@ class $$ProductsTableTableTableManager extends RootTableManager<
             required String barcode3,
             required double shopPrice3,
             required double consumerPrice3,
+            Value<double> minPrice1 = const Value.absent(),
+            Value<double> minPrice2 = const Value.absent(),
+            Value<double> minPrice3 = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               ProductsTableCompanion.insert(
@@ -1440,6 +1596,9 @@ class $$ProductsTableTableTableManager extends RootTableManager<
             barcode3: barcode3,
             shopPrice3: shopPrice3,
             consumerPrice3: consumerPrice3,
+            minPrice1: minPrice1,
+            minPrice2: minPrice2,
+            minPrice3: minPrice3,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

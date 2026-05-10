@@ -148,6 +148,11 @@ class CustomersScreen extends StatelessWidget {
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children:[
+                            if (!c.isSynced)
+                              const Padding(
+                                padding: EdgeInsets.only(left: 8.0, right: 8.0),
+                                child: Icon(Icons.cloud_off, color: Colors.orange, size: 20),
+                              ),
                             Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children:[
@@ -162,7 +167,7 @@ class CustomersScreen extends StatelessWidget {
                                     context.push(AppRoutes.customerForm, extra: {
                                       'customer': c,
                                       'targetDelegateId': c.delegateId,
-                                      'ownerSuffix': ownerSuffix, // تمرير البادئة ليتم إخفاؤها في نافذة التعديل
+                                      'ownerSuffix': ownerSuffix,
                                     });
                                   }
                                   if (val == 'delete' && canDelete) {

@@ -1,4 +1,6 @@
 // lib/main.dart
+import 'package:spice_app/data/models/invoice_model.dart';
+import 'package:spice_app/data/models/return_model.dart';
 
 import 'package:spice_app/ui/screens/transactions/invoice_form_screen.dart';
 
@@ -34,6 +36,9 @@ import 'data/local/areas_cache.dart';
 import 'logic/auth/auth_cubit.dart';
 import 'logic/auth/auth_state.dart';
 import 'ui/screens/auth/login_screen.dart';
+import 'ui/screens/transactions/transaction_details_screen.dart';
+import 'data/models/unified_transaction.dart';
+import 'data/models/receipt_model.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -120,15 +125,24 @@ class MyApp extends StatelessWidget {
       ),
       GoRoute(
         path: AppRoutes.receiptForm,
-        builder: (context, state) => const ReceiptFormScreen(),
+        builder: (context, state) {
+          final receiptDoc = state.extra as ReceiptModel?;
+          return ReceiptFormScreen(receiptToEdit: receiptDoc);
+        },
       ),
       GoRoute(
         path: AppRoutes.invoiceForm,
-        builder: (context, state) => const InvoiceFormScreen(),
+        builder: (context, state) {
+          final invoice = state.extra as InvoiceModel?;
+          return InvoiceFormScreen(invoiceToEdit: invoice);
+        },
       ),
       GoRoute(
         path: AppRoutes.returnForm,
-        builder: (context, state) => const ReturnFormScreen(), // <--- تم تفعيل الشاشة الحقيقية
+        builder: (context, state) {
+          final returnDoc = state.extra as ReturnModel?;
+          return ReturnFormScreen(returnToEdit: returnDoc);
+        },
       ),
       GoRoute(
         path: AppRoutes.admin,
@@ -156,6 +170,13 @@ class MyApp extends StatelessWidget {
               ownerSuffix: ownerSuffix, // تمريرها
             );
           }
+      ),
+      GoRoute(
+        path: AppRoutes.transactionDetails,
+        builder: (context, state) {
+          final transaction = state.extra as UnifiedTransaction;
+          return TransactionDetailsScreen(transaction: transaction);
+        },
       ),
     ],
     redirect: (context, state) {

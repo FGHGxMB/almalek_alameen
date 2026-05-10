@@ -1,27 +1,29 @@
-// lib/data/models/unified_transaction.dart
-
 enum TransactionType { invoice, returnDoc, receipt }
 
 class UnifiedTransaction {
   final String id;
   final TransactionType type;
   final DateTime date;
+  final DateTime updatedAt;
   final int localNumber;
-  final int globalNumber;
+  final int globalNumber; // سنبقيه كمتغير لعدم كسر الكود القديم، لكن قيمته ستكون دائماً 0
   final String customerName;
   final double amount;
   final bool isSynced;
-  final dynamic originalDoc; // نحتفظ بالوثيقة الأصلية لفتح التفاصيل لاحقاً
+
+  final String delegateId;
+  final String delegateName;
+  final String delegateColor;
+  final String delegateSuffix; // <--- الحقل الجديد لإخفاء البادئة
+  final String paymentMethod;
+  final bool showModifiedDate;
+  final dynamic originalDoc;
 
   UnifiedTransaction({
-    required this.id,
-    required this.type,
-    required this.date,
-    required this.localNumber,
-    required this.globalNumber,
-    required this.customerName,
-    required this.amount,
-    required this.isSynced,
-    required this.originalDoc,
+    required this.id, required this.type, required this.date, required this.updatedAt,
+    required this.localNumber, required this.globalNumber, required this.customerName,
+    required this.amount, required this.isSynced, required this.delegateId,
+    required this.delegateName, required this.delegateColor, required this.delegateSuffix,
+    required this.paymentMethod, required this.showModifiedDate, required this.originalDoc,
   });
 }

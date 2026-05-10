@@ -32,6 +32,9 @@ class ProductsCache {
       unit1: Value(p.unit1), barcode1: Value(p.barcode1), shopPrice1: Value(p.shopPrice1), consumerPrice1: Value(p.consumerPrice1),
       unit2: Value(p.unit2), barcode2: Value(p.barcode2), shopPrice2: Value(p.shopPrice2), consumerPrice2: Value(p.consumerPrice2),
       unit3: Value(p.unit3), barcode3: Value(p.barcode3), shopPrice3: Value(p.shopPrice3), consumerPrice3: Value(p.consumerPrice3),
+      minPrice1: Value(p.minPrice1),
+      minPrice2: Value(p.minPrice2),
+      minPrice3: Value(p.minPrice3),
     )).toList();
 
     await _db.replaceAllProducts(companions);
@@ -53,6 +56,9 @@ class ProductsCache {
       unit1: row.unit1, barcode1: row.barcode1, shopPrice1: row.shopPrice1, consumerPrice1: row.consumerPrice1,
       unit2: row.unit2, barcode2: row.barcode2, shopPrice2: row.shopPrice2, consumerPrice2: row.consumerPrice2,
       unit3: row.unit3, barcode3: row.barcode3, shopPrice3: row.shopPrice3, consumerPrice3: row.consumerPrice3,
+      minPrice1: row.minPrice1,
+      minPrice2: row.minPrice2,
+      minPrice3: row.minPrice3,
     )).toList();
   }
 }

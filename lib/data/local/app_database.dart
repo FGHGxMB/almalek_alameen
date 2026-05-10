@@ -36,6 +36,10 @@ class ProductsTable extends Table {
   RealColumn get shopPrice3 => real()();
   RealColumn get consumerPrice3 => real()();
 
+  RealColumn get minPrice1 => real().withDefault(const Constant(0.0))();
+  RealColumn get minPrice2 => real().withDefault(const Constant(0.0))();
+  RealColumn get minPrice3 => real().withDefault(const Constant(0.0))();
+
   @override
   Set<Column> get primaryKey => {id};
 }
