@@ -12,6 +12,7 @@ import '../../widgets/transaction_card.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../widgets/common/permission_guard.dart';
 import '../../widgets/transaction_filters_panel.dart';
+import '../../../data/repositories/customers_repository.dart';
 
 class TransactionsScreen extends StatelessWidget {
   const TransactionsScreen({Key? key}) : super(key: key);
@@ -23,7 +24,7 @@ class TransactionsScreen extends StatelessWidget {
     final currentUser = authState.user;
 
     return BlocProvider(
-      create: (context) => TransactionsCubit(context.read<TransactionsRepository>(), currentUser),
+      create: (context) => TransactionsCubit(context.read<TransactionsRepository>(), context.read<CustomersRepository>(), currentUser),
       child: Scaffold(
         appBar: AppBar(
           title: BlocBuilder<TransactionsCubit, TransactionsState>(
@@ -52,6 +53,8 @@ class TransactionsScreen extends StatelessWidget {
                               builder: (_) => TransactionFiltersPanel(
                                 currentFilters: cubit.filters,
                                 usersMap: cubit.usersMap,
+                                customers: cubit.allCustomers,
+                                currentUser: currentUser,
                                 onApply: (newFilters) => cubit.updateFilters(newFilters),
                                 onReset: () => cubit.resetFilters(),
                               ),

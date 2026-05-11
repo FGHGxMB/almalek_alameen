@@ -1,13 +1,17 @@
+// lib/logic/transactions/transactions_cubit.dart
+
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'transactions_state.dart';
 import '../../data/repositories/transactions_repository.dart';
+import '../../data/repositories/customers_repository.dart';
 import '../../data/models/user_model.dart';
 import '../../data/models/unified_transaction.dart';
 import '../../data/models/invoice_model.dart';
 import '../../data/models/return_model.dart';
 import '../../data/models/receipt_model.dart';
+import '../../data/models/customer_model.dart';
 import '../../core/utils/excel_exporter.dart';
 import '../../data/local/transactions_filters_storage.dart';
 import '../../core/constants/firestore_keys.dart';
@@ -19,19 +23,25 @@ class TransactionFilters {
   bool sortByDelegate = false;
   bool sortByPayment = false;
 
-  List<String> selectedDelegates = [];
+  List<String> selectedDelegates =[];
   List<String> selectedPaymentMethods =[];
   List<String> selectedDocTypes =[];
   double? minAmount;
   double? maxAmount;
-  DateTime? fromDate; // فلتر التاريخ الجديد
+  DateTime? fromDate;
   DateTime? toDate;
+
+  // الفلاتر الجديدة للزبائن
+  String? selectedCustomerId;
+  String? selectedCustomerName;
+  bool filterCashOnly = false; // العمليات النقدية بدون زبون
 
   Map<String, dynamic> toJson() => {
     'sortMode': sortMode, 'sortByDocType': sortByDocType, 'sortByDelegate': sortByDelegate, 'sortByPayment': sortByPayment,
     'selectedDelegates': selectedDelegates, 'selectedPaymentMethods': selectedPaymentMethods, 'selectedDocTypes': selectedDocTypes,
     'minAmount': minAmount, 'maxAmount': maxAmount,
     'fromDate': fromDate?.toIso8601String(), 'toDate': toDate?.toIso8601String(),
+    'selectedCustomerId': selectedCustomerId, 'selectedCustomerName': selectedCustomerName, 'filterCashOnly': filterCashOnly,
   };
 
   factory TransactionFilters.fromJson(Map<String, dynamic> json) {
@@ -40,25 +50,31 @@ class TransactionFilters {
     f.sortByDelegate = json['sortByDelegate'] ?? false; f.sortByPayment = json['sortByPayment'] ?? false;
     f.selectedDelegates = List<String>.from(json['selectedDelegates'] ??[]);
     f.selectedPaymentMethods = List<String>.from(json['selectedPaymentMethods'] ??[]);
-    f.selectedDocTypes = List<String>.from(json['selectedDocTypes'] ?? []);
+    f.selectedDocTypes = List<String>.from(json['selectedDocTypes'] ??[]);
     f.minAmount = json['minAmount']; f.maxAmount = json['maxAmount'];
     if (json['fromDate'] != null) f.fromDate = DateTime.tryParse(json['fromDate']);
     if (json['toDate'] != null) f.toDate = DateTime.tryParse(json['toDate']);
+    f.selectedCustomerId = json['selectedCustomerId'];
+    f.selectedCustomerName = json['selectedCustomerName'];
+    f.filterCashOnly = json['filterCashOnly'] ?? false;
     return f;
   }
 }
 
 class TransactionsCubit extends Cubit<TransactionsState> {
   final TransactionsRepository _repository;
+  final CustomersRepository _customersRepo; // إضافة مستودع الزبائن
   final UserModel currentUser;
 
   StreamSubscription? _invoicesSub;
   StreamSubscription? _returnsSub;
   StreamSubscription? _receiptsSub;
+  StreamSubscription? _customersSub;
 
   List<InvoiceModel> _invoices =[];
   List<ReturnModel> _returns =[];
   List<ReceiptModel> _receipts =[];
+  List<CustomerModel> allCustomers =[]; // قائمة الزبائن المتاحة
   List<UnifiedTransaction> _allUnified =[];
 
   TransactionFilters filters = TransactionFilters();
@@ -70,9 +86,10 @@ class TransactionsCubit extends Cubit<TransactionsState> {
   bool get hasActiveFilters =>
       filters.sortMode != 'date_desc' || filters.sortByDocType || filters.sortByDelegate || filters.sortByPayment ||
           filters.selectedPaymentMethods.isNotEmpty || filters.selectedDocTypes.isNotEmpty ||
-          filters.minAmount != null || filters.maxAmount != null || filters.fromDate != null || filters.toDate != null || (filters.selectedDelegates.length > 1);
+          filters.minAmount != null || filters.maxAmount != null || filters.fromDate != null || filters.toDate != null ||
+          filters.selectedCustomerId != null || filters.filterCashOnly || (filters.selectedDelegates.length > 1);
 
-  TransactionsCubit(this._repository, this.currentUser) : super(TransactionsLoading()) {
+  TransactionsCubit(this._repository, this._customersRepo, this.currentUser) : super(TransactionsLoading()) {
     _initData();
   }
 
@@ -89,20 +106,29 @@ class TransactionsCubit extends Cubit<TransactionsState> {
   Future<void> refreshDelegates() async {
     try {
       currencyRate = await _repository.getCurrencyRate();
-      final delegateIds = [currentUser.id, ...currentUser.canMonitor];
+      final delegateIds =[currentUser.id, ...currentUser.canMonitor];
       final snap = await FirebaseFirestore.instance.collection(FirestoreKeys.users).where(FieldPath.documentId, whereIn: delegateIds).get();
       for (var doc in snap.docs) usersMap[doc.id] = UserModel.fromFirestore(doc);
     } catch(e){}
   }
 
   void _initStreams() {
-    final delegateIds = [currentUser.id, ...currentUser.canMonitor];
+    final delegateIds =[currentUser.id, ...currentUser.canMonitor];
+
+    // جلب الزبائن لتعويض الأسماء في السندات والبحث
+    _customersSub = _customersRepo.getCustomersStream(currentUser).listen((data) {
+      allCustomers = data;
+      _mergeAndEmit();
+    });
+
     _invoicesSub = _repository.getInvoicesStream(delegateIds).listen((data) { _invoices = data; _mergeAndEmit(); });
     _returnsSub = _repository.getReturnsStream(delegateIds).listen((data) { _returns = data; _mergeAndEmit(); });
     _receiptsSub = _repository.getReceiptsStream(delegateIds).listen((data) { _receipts = data; _mergeAndEmit(); });
   }
 
   void _mergeAndEmit() {
+    if (allCustomers.isEmpty) return; // ننتظر تحميل الزبائن أولاً
+
     _allUnified =[];
     for (var inv in _invoices) {
       bool isGiftInvoice = inv.items.isNotEmpty && inv.items.every((i) => i.isGift);
@@ -112,11 +138,11 @@ class TransactionsCubit extends Cubit<TransactionsState> {
 
       _allUnified.add(UnifiedTransaction(
         id: inv.id, type: TransactionType.invoice, date: inv.createdAt, updatedAt: inv.updatedAt,
-        localNumber: inv.delegateInvoiceNumber, globalNumber: inv.invoiceNumber, customerName: inv.customerName,
+        localNumber: inv.delegateInvoiceNumber, globalNumber: inv.invoiceNumber,
+        customerId: inv.customerId, customerName: inv.customerName.isEmpty ? 'زبون نقدي' : inv.customerName,
         amount: _calculateInvoiceTotal(inv), isSynced: inv.isSynced, delegateId: inv.delegateId,
         delegateName: usersMap[inv.delegateId]?.accountName ?? 'مجهول', delegateColor: usersMap[inv.delegateId]?.accountColor ?? '#000000',
-        delegateSuffix: usersMap[inv.delegateId]?.customerSuffix ?? '', // تمرير البادئة
-        paymentMethod: method, showModifiedDate: showModDate, originalDoc: inv,
+        delegateSuffix: usersMap[inv.delegateId]?.customerSuffix ?? '', paymentMethod: method, showModifiedDate: showModDate, originalDoc: inv,
       ));
     }
 
@@ -126,11 +152,11 @@ class TransactionsCubit extends Cubit<TransactionsState> {
 
       _allUnified.add(UnifiedTransaction(
         id: ret.id, type: TransactionType.returnDoc, date: ret.createdAt, updatedAt: ret.updatedAt,
-        localNumber: ret.delegateReturnNumber, globalNumber: ret.returnNumber, customerName: ret.customerName,
+        localNumber: ret.delegateReturnNumber, globalNumber: ret.returnNumber,
+        customerId: ret.customerId, customerName: ret.customerName.isEmpty ? 'زبون نقدي' : ret.customerName,
         amount: _calculateReturnTotal(ret), isSynced: ret.isSynced, delegateId: ret.delegateId,
         delegateName: usersMap[ret.delegateId]?.accountName ?? 'مجهول', delegateColor: usersMap[ret.delegateId]?.accountColor ?? '#000000',
-        delegateSuffix: usersMap[ret.delegateId]?.customerSuffix ?? '',
-        paymentMethod: ret.paymentMethod, showModifiedDate: showModDate, originalDoc: ret,
+        delegateSuffix: usersMap[ret.delegateId]?.customerSuffix ?? '', paymentMethod: ret.paymentMethod, showModifiedDate: showModDate, originalDoc: ret,
       ));
     }
 
@@ -138,13 +164,17 @@ class TransactionsCubit extends Cubit<TransactionsState> {
       final isMine = rec.delegateId == currentUser.id;
       final showModDate = (!isMine) || (isMine && currentUser.permissions.receiptEdit);
 
+      // السحر هنا: جلب اسم الزبون من قائمة الزبائن المحملة
+      String cName = 'غير معروف';
+      try { cName = allCustomers.firstWhere((c) => c.id == rec.creditorAccount).customerName; } catch(e){}
+
       _allUnified.add(UnifiedTransaction(
         id: rec.id, type: TransactionType.receipt, date: rec.createdAt, updatedAt: rec.updatedAt,
-        localNumber: rec.delegateReceiptNumber, globalNumber: rec.receiptNumber, customerName: 'سند قبض',
+        localNumber: rec.delegateReceiptNumber, globalNumber: rec.receiptNumber,
+        customerId: rec.creditorAccount, customerName: cName,
         amount: rec.amount, isSynced: rec.isSynced, delegateId: rec.delegateId,
         delegateName: usersMap[rec.delegateId]?.accountName ?? 'مجهول', delegateColor: usersMap[rec.delegateId]?.accountColor ?? '#000000',
-        delegateSuffix: usersMap[rec.delegateId]?.customerSuffix ?? '',
-        paymentMethod: 'cash', showModifiedDate: showModDate, originalDoc: rec,
+        delegateSuffix: usersMap[rec.delegateId]?.customerSuffix ?? '', paymentMethod: 'cash', showModifiedDate: showModDate, originalDoc: rec,
       ));
     }
     applyFilters();
@@ -160,6 +190,10 @@ class TransactionsCubit extends Cubit<TransactionsState> {
       if (filters.maxAmount != null && t.amount >= filters.maxAmount!) return false;
       if (filters.fromDate != null && t.date.isBefore(filters.fromDate!)) return false;
       if (filters.toDate != null && t.date.isAfter(filters.toDate!.add(const Duration(days: 1)))) return false;
+
+      // فلتر الزبون والنقدي
+      if (filters.filterCashOnly && t.customerId.isNotEmpty) return false;
+      if (filters.selectedCustomerId != null && t.customerId != filters.selectedCustomerId) return false;
 
       if (filters.selectedDocTypes.isNotEmpty) {
         String tType = t.type == TransactionType.invoice ? 'invoice' : t.type == TransactionType.returnDoc ? 'return' : 'receipt';
@@ -229,7 +263,7 @@ class TransactionsCubit extends Cubit<TransactionsState> {
 
   @override
   Future<void> close() {
-    _invoicesSub?.cancel(); _returnsSub?.cancel(); _receiptsSub?.cancel();
+    _invoicesSub?.cancel(); _returnsSub?.cancel(); _receiptsSub?.cancel(); _customersSub?.cancel();
     return super.close();
   }
 }

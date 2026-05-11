@@ -100,7 +100,7 @@ class TransactionCard extends StatelessWidget {
                         ]
                       ],
                     ),
-                    if (displayCustomerName.isNotEmpty && displayCustomerName != 'سند قبض')
+                    if (displayCustomerName.isNotEmpty)
                       Text(displayCustomerName, style: TextStyle(color: Colors.grey.shade800, fontSize: 13, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 4),
                     Text('تاريخ: ${DateFormat('yyyy-MM-dd | hh:mm a').format(transaction.date)}', style: TextStyle(color: Colors.grey.shade600, fontSize: 11)),
@@ -117,7 +117,7 @@ class TransactionCard extends StatelessWidget {
                   else
                     Text(NumberFormat('#,##0').format(transaction.amount), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: primaryColor)),
 
-                  Text('رقم: ${transaction.localNumber.toString().padLeft(4, '0')}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                  Text('رقم: ${transaction.localNumber.toString().padLeft(5, '0')}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
                 ],
               ),
             ],

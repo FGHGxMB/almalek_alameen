@@ -39,6 +39,7 @@ import 'ui/screens/auth/login_screen.dart';
 import 'ui/screens/transactions/transaction_details_screen.dart';
 import 'data/models/unified_transaction.dart';
 import 'data/models/receipt_model.dart';
+import 'ui/screens/settings/basic_info_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -177,6 +178,14 @@ class MyApp extends StatelessWidget {
           final transaction = state.extra as UnifiedTransaction;
           return TransactionDetailsScreen(transaction: transaction);
         },
+      ),
+      GoRoute(
+        path: AppRoutes.basicInfo,
+        builder: (context, state) => const BasicInfoScreen(), // الشاشة الحقيقية
+      ),
+      GoRoute(
+        path: AppRoutes.productsManagement,
+        builder: (context, state) => Scaffold(appBar: AppBar(title: const Text('إدارة المواد')), body: const Center(child: Text('شاشة إدارة المواد والأسعار - قيد البرمجة'))),
       ),
     ],
     redirect: (context, state) {

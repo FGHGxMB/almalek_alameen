@@ -16,4 +16,7 @@ class AppRoutes {
   static const String userEdit = '/user-edit';
 
   static const String transactionDetails = '/transaction-details';
+
+  static const String basicInfo = '/basic-info';
+  static const String productsManagement = '/products-management';
 }

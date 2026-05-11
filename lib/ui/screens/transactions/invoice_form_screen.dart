@@ -159,6 +159,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                 final t = UnifiedTransaction(
                     id: widget.invoiceToEdit!.id, type: TransactionType.invoice, date: widget.invoiceToEdit!.invoiceDate, updatedAt: widget.invoiceToEdit!.updatedAt,
                     localNumber: widget.invoiceToEdit!.delegateInvoiceNumber, globalNumber: widget.invoiceToEdit!.invoiceNumber,
+                    customerId: widget.invoiceToEdit!.customerId, // <--- السطر المضاف
                     customerName: nameCtrl.text, amount: state.total + state.discount, isSynced: true, delegateId: currentUser.id,
                     delegateName: delegateCtrl.text, delegateColor: '#000000', delegateSuffix: '', paymentMethod: state.paymentMethod, showModifiedDate: false, originalDoc: widget.invoiceToEdit!
                 );
@@ -180,7 +181,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
         mainAxisSize: MainAxisSize.min,
         children:[
           const Text('المالك الأمين للبهارات', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-          Text('فاتورة مبيعات رقم: ${widget.invoiceToEdit?.delegateInvoiceNumber ?? ''}'),
+          Text('فاتورة مبيعات رقم: ${widget.invoiceToEdit?.delegateInvoiceNumber.toString().padLeft(5, '0') ?? ''}'),
           const Divider(thickness: 2),
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children:[Text('الزبون: $cName'), Text('التاريخ: ${DateFormat('yyyy-MM-dd').format(DateTime.now())}')]),
           if(cAddress.isNotEmpty) Row(children:[Text('العنوان: $cAddress')]),
@@ -309,7 +310,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
       create: (context) => InvoiceFormCubit(context.read<CustomersRepository>(), context.read<ProductsRepository>(), context.read<TransactionsRepository>(), currentUser)..initData(invoiceToEdit: widget.invoiceToEdit),
       child: Scaffold(
         appBar: AppBar(
-          title: Text(isViewMode ? 'عرض الفاتورة #${widget.invoiceToEdit!.delegateInvoiceNumber}' : (widget.invoiceToEdit != null ? 'تعديل الفاتورة' : 'إنشاء فاتورة')),
+          title: Text(isViewMode ? 'عرض الفاتورة #${widget.invoiceToEdit!.delegateInvoiceNumber.toString().padLeft(5, '0')}' : (widget.invoiceToEdit != null ? 'تعديل الفاتورة' : 'إنشاء فاتورة')),
           centerTitle: true,
           backgroundColor: isViewMode ? Colors.grey.shade700 : Colors.blue.shade700,
           foregroundColor: Colors.white,

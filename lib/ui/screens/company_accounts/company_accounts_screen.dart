@@ -164,70 +164,75 @@ class CompanyAccountsScreen extends StatelessWidget {
               if (state is CompanyAccountsLoaded) {
                 if (state.accounts.isEmpty) return const Center(child: Text('لا توجد حسابات مسجلة للشركة.'));
 
-                return ReorderableListView.builder(
-                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
-                  buildDefaultDragHandles: hasEditPermission,
-                  itemCount: state.accounts.length,
-                  onReorder: (oldIndex, newIndex) {
-                    context.read<CompanyAccountsCubit>().reorder(oldIndex, newIndex);
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    // الـ Stream يتحدث تلقائياً، ولكن هذا يعطي تجربة مستخدم ممتازة
+                    await Future.delayed(const Duration(seconds: 1));
                   },
-                  itemBuilder: (context, index) {
-                    final account = state.accounts[index];
+                  child: ReorderableListView.builder(
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
+                    buildDefaultDragHandles: hasEditPermission,
+                    itemCount: state.accounts.length,
+                    onReorder: (oldIndex, newIndex) {
+                      context.read<CompanyAccountsCubit>().reorder(oldIndex, newIndex);
+                    },
+                    itemBuilder: (context, index) {
+                      final account = state.accounts[index];
+                      // ... (باقي الكود الداخلي لـ Card كما هو تماماً بدون تغيير)
+                      final themeColor = _hexToColor(account.themeColor);
+                      final dynamicBgColor = themeColor.withOpacity(0.1);
 
-                    // السحر هنا: نأخذ لون الثيم، وننشئ منه لون الخلفية الشفاف برمجياً بنسبة 10%
-                    final themeColor = _hexToColor(account.themeColor);
-                    final dynamicBgColor = themeColor.withOpacity(0.1);
-
-                    return Card(
-                      key: ValueKey(account.id),
-                      elevation: 0,
-                      margin: const EdgeInsets.only(bottom: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        side: BorderSide(color: themeColor.withOpacity(0.4), width: 1.5),
-                      ),
-                      color: dynamicBgColor, // الخلفية الديناميكية المريحة للعين
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        leading: CircleAvatar(
-                          backgroundColor: themeColor,
-                          child: Icon(account.accountType == 'supplier' ? Icons.store : Icons.apartment, color: Colors.white, size: 20),
+                      return Card(
+                        key: ValueKey(account.id),
+                        elevation: 0,
+                        margin: const EdgeInsets.only(bottom: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          side: BorderSide(color: themeColor.withOpacity(0.4), width: 1.5),
                         ),
-                        title: Text(account.accountName, style: TextStyle(fontWeight: FontWeight.bold, color: themeColor)),
-                        subtitle: Text(account.accountType == 'supplier' ? 'مُورِّد' : 'زبون شركة', style: TextStyle(fontSize: 12, color: themeColor.withOpacity(0.7))),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children:[
-                            Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children:[
-                                Text('الرصيد', style: TextStyle(fontSize: 10, color: Colors.grey.shade700)),
-                                Text(
-                                  '${NumberFormat.currency(symbol: '', decimalDigits: 1).format(account.balance)} ${account.currency}',
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: themeColor),
-                                ),
-                              ],
-                            ),
-                            if (hasEditPermission) ...[
-                              const SizedBox(width: 8),
-                              PopupMenuButton<String>(
-                                icon: Icon(Icons.more_vert, color: themeColor),
-                                onSelected: (val) {
-                                  if (val == 'edit') _showAccountFormDialog(context, accountToEdit: account);
-                                  if (val == 'delete') context.read<CompanyAccountsCubit>().deleteAccount(account.id);
-                                },
-                                itemBuilder: (context) =>[
-                                  const PopupMenuItem(value: 'edit', child: Row(children:[Icon(Icons.edit, size: 20), SizedBox(width: 8), Text('تعديل')])),
-                                  const PopupMenuItem(value: 'delete', child: Row(children:[Icon(Icons.delete, color: Colors.red, size: 20), SizedBox(width: 8), Text('حذف', style: TextStyle(color: Colors.red))])),
+                        color: dynamicBgColor,
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          leading: CircleAvatar(
+                            backgroundColor: themeColor,
+                            child: Icon(account.accountType == 'supplier' ? Icons.store : Icons.apartment, color: Colors.white, size: 20),
+                          ),
+                          title: Text(account.accountName, style: TextStyle(fontWeight: FontWeight.bold, color: themeColor)),
+                          subtitle: Text(account.accountType == 'supplier' ? 'مُورِّد' : 'زبون شركة', style: TextStyle(fontSize: 12, color: themeColor.withOpacity(0.7))),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children:[
+                              Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children:[
+                                  Text('الرصيد', style: TextStyle(fontSize: 10, color: Colors.grey.shade700)),
+                                  Text(
+                                    '${NumberFormat.currency(symbol: '', decimalDigits: 1).format(account.balance)} ${account.currency}',
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: themeColor),
+                                  ),
                                 ],
-                              )
-                            ]
-                          ],
+                              ),
+                              if (hasEditPermission) ...[
+                                const SizedBox(width: 8),
+                                PopupMenuButton<String>(
+                                  icon: Icon(Icons.more_vert, color: themeColor),
+                                  onSelected: (val) {
+                                    if (val == 'edit') _showAccountFormDialog(context, accountToEdit: account);
+                                    if (val == 'delete') context.read<CompanyAccountsCubit>().deleteAccount(account.id);
+                                  },
+                                  itemBuilder: (context) =>[
+                                    const PopupMenuItem(value: 'edit', child: Row(children:[Icon(Icons.edit, size: 20), SizedBox(width: 8), Text('تعديل')])),
+                                    const PopupMenuItem(value: 'delete', child: Row(children:[Icon(Icons.delete, color: Colors.red, size: 20), SizedBox(width: 8), Text('حذف', style: TextStyle(color: Colors.red))])),
+                                  ],
+                                )
+                              ]
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 );
               }
               return const SizedBox.shrink();

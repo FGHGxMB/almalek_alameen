@@ -161,7 +161,8 @@ class _ReceiptFormScreenState extends State<ReceiptFormScreen> {
                 final t = UnifiedTransaction(
                     id: widget.receiptToEdit!.id, type: TransactionType.receipt, date: widget.receiptToEdit!.date, updatedAt: widget.receiptToEdit!.updatedAt,
                     localNumber: widget.receiptToEdit!.delegateReceiptNumber, globalNumber: widget.receiptToEdit!.receiptNumber,
-                    customerName: nameCtrl.text, amount: widget.receiptToEdit!.amount, isSynced: true, delegateId: currentUser.id,
+                    customerId: widget.receiptToEdit!.creditorAccount, // <--- السطر المضاف (في السند اسمه creditorAccount)
+                    customerName: nameCtrl.text, amount: widget.receiptToEdit!.amount, isSynced: true, delegateId: widget.receiptToEdit!.delegateId,
                     delegateName: delegateCtrl.text, delegateColor: '#000000', delegateSuffix: '', paymentMethod: 'cash', showModifiedDate: false, originalDoc: widget.receiptToEdit!
                 );
                 PrinterService().printTransaction(t);
@@ -181,7 +182,7 @@ class _ReceiptFormScreenState extends State<ReceiptFormScreen> {
         mainAxisSize: MainAxisSize.min,
         children:[
           const Text('المالك الأمين للبهارات', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-          Text('سند قبض رقم: ${widget.receiptToEdit?.delegateReceiptNumber ?? ''}'),
+          Text('سند قبض رقم: ${widget.receiptToEdit?.delegateReceiptNumber.toString().padLeft(5, '0') ?? ''}'),
           const Divider(thickness: 2),
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children:[Text('الزبون: $cName'), Text('التاريخ: ${DateFormat('yyyy-MM-dd').format(DateTime.now())}')]),
           if(cAddress.isNotEmpty) Row(children:[Text('العنوان: $cAddress')]),
@@ -226,7 +227,7 @@ class _ReceiptFormScreenState extends State<ReceiptFormScreen> {
       )..initData(receiptToEdit: widget.receiptToEdit),
       child: Scaffold(
         appBar: AppBar(
-          title: Text(isViewMode ? 'عرض سند قبض #${widget.receiptToEdit!.delegateReceiptNumber}' : (widget.receiptToEdit != null ? 'تعديل السند' : 'إنشاء سند قبض')),
+          title: Text(isViewMode ? 'عرض سند قبض #${widget.receiptToEdit!.delegateReceiptNumber.toString().padLeft(5, '0')}' : (widget.receiptToEdit != null ? 'تعديل السند' : 'إنشاء سند قبض')),
           centerTitle: true,
           backgroundColor: isViewMode ? Colors.grey.shade700 : Colors.green.shade600,
           foregroundColor: Colors.white,

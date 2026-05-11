@@ -151,6 +151,7 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
                 final t = UnifiedTransaction(
                     id: widget.returnToEdit!.id, type: TransactionType.returnDoc, date: widget.returnToEdit!.returnDate, updatedAt: widget.returnToEdit!.updatedAt,
                     localNumber: widget.returnToEdit!.delegateReturnNumber, globalNumber: widget.returnToEdit!.returnNumber,
+                    customerId: widget.returnToEdit!.customerId, // <--- السطر المضاف
                     customerName: nameCtrl.text, amount: state.total, isSynced: true, delegateId: currentUser.id,
                     delegateName: delegateCtrl.text, delegateColor: '#000000', delegateSuffix: '', paymentMethod: state.paymentMethod, showModifiedDate: false, originalDoc: widget.returnToEdit!
                 );
@@ -171,7 +172,7 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
         mainAxisSize: MainAxisSize.min,
         children:[
           const Text('المالك الأمين للبهارات', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-          Text('مرتجع مبيعات رقم: ${widget.returnToEdit?.delegateReturnNumber ?? ''}'),
+          Text('مرتجع مبيعات رقم: ${widget.returnToEdit?.delegateReturnNumber.toString().padLeft(5, '0') ?? ''}'),
           const Divider(thickness: 2),
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children:[Text('الزبون: $cName'), Text('التاريخ: ${DateFormat('yyyy-MM-dd').format(DateTime.now())}')]),
           if(cAddress.isNotEmpty) Row(children:[Text('العنوان: $cAddress')]),
@@ -286,7 +287,7 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
       create: (context) => ReturnFormCubit(context.read<CustomersRepository>(), context.read<ProductsRepository>(), context.read<TransactionsRepository>(), currentUser)..initData(returnToEdit: widget.returnToEdit),
       child: Scaffold(
         appBar: AppBar(
-          title: Text(isViewMode ? 'عرض مرتجع #${widget.returnToEdit!.delegateReturnNumber}' : (widget.returnToEdit != null ? 'تعديل مرتجع' : 'إنشاء مرتجع')),
+          title: Text(isViewMode ? 'عرض مرتجع #${widget.returnToEdit!.delegateReturnNumber.toString().padLeft(5, '0')}' : (widget.returnToEdit != null ? 'تعديل مرتجع' : 'إنشاء مرتجع')),
           centerTitle: true,
           backgroundColor: isViewMode ? Colors.grey.shade700 : Colors.red.shade700,
           foregroundColor: Colors.white,

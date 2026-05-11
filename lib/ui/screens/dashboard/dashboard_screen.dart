@@ -120,9 +120,10 @@ class DashboardScreen extends StatelessWidget {
                   value: state.selectedDelegateId,
                   isExpanded: true,
                   items: availableDelegates.map((id) {
+                    final name = state.delegateNames[id] ?? id; // قراءة الاسم السحري
                     return DropdownMenuItem(
                       value: id,
-                      child: Text(id == currentUser.id ? 'حسابي' : 'مندوب ($id)'),
+                      child: Text(id == currentUser.id ? 'حسابي ($name)' : name),
                     );
                   }).toList(),
                   onChanged: (val) {

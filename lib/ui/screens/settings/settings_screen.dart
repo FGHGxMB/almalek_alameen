@@ -1,5 +1,3 @@
-// lib/ui/screens/settings/settings_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -15,34 +13,35 @@ class SettingsScreen extends StatelessWidget {
 
   void _showEditPasswordDialog(BuildContext context, SettingsCubit cubit) {
     final controller = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('تغيير كلمة المرور'),
-        content: TextField(
-          controller: controller,
-          obscureText: true,
-          decoration: const InputDecoration(labelText: 'كلمة المرور الجديدة', border: OutlineInputBorder()),
-        ),
-        actions:[
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
-          ElevatedButton(
-            onPressed: () {
-              cubit.updatePassword(controller.text.trim());
-              Navigator.pop(ctx);
-            },
-            child: const Text('حفظ'),
-          ),
-        ],
-      ),
-    );
+    showDialog(context: context, builder: (ctx) => AlertDialog(
+      title: const Text('تغيير كلمة المرور'),
+      content: TextField(controller: controller, obscureText: true, decoration: const InputDecoration(labelText: 'كلمة المرور الجديدة', border: OutlineInputBorder())),
+      actions:[
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+        ElevatedButton(onPressed: () { cubit.updatePassword(controller.text.trim()); Navigator.pop(ctx); }, child: const Text('حفظ')),
+      ],
+    ));
+  }
+
+  void _showEditCurrencyDialog(BuildContext context, SettingsCubit cubit, double currentRate) {
+    final controller = TextEditingController(text: currentRate.toString());
+    showDialog(context: context, builder: (ctx) => AlertDialog(
+      title: const Text('تعديل سعر الدولار'),
+      content: TextField(controller: controller, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'سعر الصرف الجديد', border: OutlineInputBorder())),
+      actions:[
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+        ElevatedButton(onPressed: () {
+          cubit.updateCurrencyRate(double.tryParse(controller.text) ?? currentRate);
+          Navigator.pop(ctx);
+        }, child: const Text('حفظ السعر')),
+      ],
+    ));
   }
 
   @override
   Widget build(BuildContext context) {
     final authState = context.read<AuthCubit>().state;
     if (authState is! AuthAuthenticated) return const SizedBox.shrink();
-
     final user = authState.user;
 
     return BlocProvider(
@@ -51,19 +50,16 @@ class SettingsScreen extends StatelessWidget {
         appBar: AppBar(title: const Text('الإعدادات'), centerTitle: true),
         body: BlocConsumer<SettingsCubit, SettingsState>(
           listener: (context, state) {
-            if (state is SettingsSuccess) {
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message), backgroundColor: Colors.green));
-            } else if (state is SettingsError) {
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message), backgroundColor: Colors.red));
-            }
+            if (state is SettingsSuccess) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message), backgroundColor: Colors.green));
+            if (state is SettingsError) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message), backgroundColor: Colors.red));
           },
+          buildWhen: (previous, current) => current is SettingsLoaded || current is SettingsLoading,
           builder: (context, state) {
             final cubit = context.read<SettingsCubit>();
 
             return ListView(
               padding: const EdgeInsets.all(16),
               children:[
-                // معلومات الحساب
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(16),
@@ -74,15 +70,7 @@ class SettingsScreen extends StatelessWidget {
                           children:[
                             const CircleAvatar(child: Icon(Icons.person), radius: 30),
                             const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children:[
-                                  Text(user.accountName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                                  Text(user.rank, style: TextStyle(color: Colors.teal.shade700)),
-                                ],
-                              ),
-                            ),
+                            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children:[Text(user.accountName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)), Text(user.rank, style: TextStyle(color: Colors.teal.shade700))])),
                           ],
                         ),
                         const Divider(height: 32),
@@ -96,48 +84,84 @@ class SettingsScreen extends StatelessWidget {
 
                 const Text('إعدادات الحساب', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 const SizedBox(height: 8),
-
                 if (state is SettingsLoading) const LinearProgressIndicator(),
 
-                ListTile(
-                  leading: const Icon(Icons.lock),
-                  title: const Text('تغيير كلمة المرور'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () => _showEditPasswordDialog(context, cubit),
-                ),
+                ListTile(leading: const Icon(Icons.lock), title: const Text('تغيير كلمة المرور'), trailing: const Icon(Icons.arrow_forward_ios, size: 16), onTap: () => _showEditPasswordDialog(context, cubit)),
 
                 const Divider(height: 32),
 
-                // زر لوحة الإدارة يظهر فقط للأدمن
+                // قسم الإدارة (يظهر فقط للأدمن)
                 PermissionGuard(
                   permissionCheck: (perms) => perms.adminAccess,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children:[
-                      const Text('الإدارة', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      const Text('الإدارة والنظام', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.teal)),
                       const SizedBox(height: 8),
+
+                      // 1. سعر الدولار الحي
+                      if (state is SettingsLoaded)
+                        ListTile(
+                          tileColor: Colors.teal.shade50,
+                          leading: const Icon(Icons.attach_money, color: Colors.teal),
+                          title: Row(
+                            children:[
+                              const Text('سعر الدولار: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                              Text('${state.currencyRate}', style: const TextStyle(color: Colors.teal, fontWeight: FontWeight.bold, fontSize: 18)),
+                              if (!state.isSynced) ...[
+                                const SizedBox(width: 8),
+                                const Icon(Icons.cloud_off, color: Colors.orange, size: 18),
+                              ]
+                            ],
+                          ),
+                          trailing: const Icon(Icons.edit, size: 20, color: Colors.teal),
+                          onTap: () => _showEditCurrencyDialog(context, cubit, state.currencyRate),
+                        ),
+                      const SizedBox(height: 8),
+
+                      // 2. المعلومات الأساسية
+                      ListTile(
+                        tileColor: Colors.teal.shade50,
+                        leading: const Icon(Icons.info_outline, color: Colors.teal),
+                        title: Row(
+                          children:[
+                            const Text('المعلومات الأساسية للمؤسسة'),
+                            // عرض الغيمة البرتقالية إذا كانت الإعدادات قيد الرفع
+                            if (state is SettingsLoaded && !state.isSynced) ...[
+                              const SizedBox(width: 8),
+                              const Icon(Icons.cloud_off, color: Colors.orange, size: 16),
+                            ]
+                          ],
+                        ),
+                        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.teal),
+                        onTap: () => context.push(AppRoutes.basicInfo),
+                      ),
+                      const SizedBox(height: 8),
+
+                      // 3. إدارة المواد
+                      ListTile(
+                        tileColor: Colors.teal.shade50,
+                        leading: const Icon(Icons.inventory_2_outlined, color: Colors.teal),
+                        title: const Text('إدارة المواد والأسعار'),
+                        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.teal),
+                        onTap: () => context.push(AppRoutes.productsManagement),
+                      ),
+                      const SizedBox(height: 8),
+
+                      // 4. لوحة المستخدمين (الأدمن)
                       ListTile(
                         tileColor: Colors.teal.shade50,
                         leading: const Icon(Icons.admin_panel_settings, color: Colors.teal),
-                        title: const Text('لوحة تحكم المدير', style: TextStyle(color: Colors.teal, fontWeight: FontWeight.bold)),
+                        title: const Text('إدارة الصلاحيات والمندوبين', style: TextStyle(color: Colors.teal, fontWeight: FontWeight.bold)),
                         trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.teal),
-                        onTap: () {
-                          // الانتقال لشاشة الأدمن
-                          context.push(AppRoutes.admin);
-                        },
+                        onTap: () => context.push(AppRoutes.admin),
                       ),
                       const Divider(height: 32),
                     ],
                   ),
                 ),
 
-                ListTile(
-                  leading: const Icon(Icons.logout, color: Colors.red),
-                  title: const Text('تسجيل الخروج', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-                  onTap: () {
-                    context.read<AuthCubit>().logout();
-                  },
-                ),
+                ListTile(leading: const Icon(Icons.logout, color: Colors.red), title: const Text('تسجيل الخروج', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)), onTap: () => context.read<AuthCubit>().logout()),
               ],
             );
           },
