@@ -205,7 +205,6 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
     );
   }
 
-  // --- دالة نافذة تعديل القلم ---
   void _showEditItemDialog(BuildContext context, InvoiceFormCubit cubit, int index, var item, List<ProductModel> products, double currencyRate) {
     if (item.isGift) return; // الهدية لا تعدل أسعارها
 
@@ -215,76 +214,116 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
     double price = item.price;
     double minPrice = item.minPrice;
 
+    final qtyCtrl = TextEditingController(text: _rawNum(qty));
+    final priceCtrl = TextEditingController(text: _rawNum(price));
+
+    String? qtyError;
+    String? priceError;
+
     showDialog(
       context: context,
       builder: (ctx) {
         return StatefulBuilder(builder: (context, setState) {
-          bool isPriceLocked = (price == minPrice);
+          bool isPriceLocked = (price == minPrice && minPrice > 0);
 
           return AlertDialog(
-            title: Text('تعديل ${product.itemName}'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children:[
-                TextFormField(
-                  initialValue: _rawNum(qty),
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'الكمية'),
-                  onChanged: (v) => qty = double.tryParse(v) ?? qty,
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: u,
-                  items:[
-                    if (product.unit1.isNotEmpty) DropdownMenuItem(value: product.unit1, child: Text(product.unit1)),
-                    if (product.unit2.isNotEmpty) DropdownMenuItem(value: product.unit2, child: Text(product.unit2)),
-                    if (product.unit3.isNotEmpty) DropdownMenuItem(value: product.unit3, child: Text(product.unit3)),
-                  ],
-                  onChanged: (v) {
-                    if (v != null) {
+            title: Text('تعديل ${product.itemName}', style: const TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children:[
+                  TextFormField(
+                    controller: qtyCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: 'الكمية',
+                      border: const OutlineInputBorder(),
+                      errorText: qtyError,
+                      suffixIcon: IconButton(icon: const Icon(Icons.clear, size: 18), onPressed: () { qtyCtrl.clear(); setState(() => qty = 0); }),
+                    ),
+                    onChanged: (v) {
                       setState(() {
-                        u = v;
-                        if (v == product.unit1) { price = product.shopPrice1 * currencyRate; minPrice = product.shopPrice1 * currencyRate; }
-                        if (v == product.unit2) { price = product.shopPrice2 * currencyRate; minPrice = product.shopPrice2 * currencyRate; }
-                        if (v == product.unit3) { price = product.shopPrice3 * currencyRate; minPrice = product.shopPrice3 * currencyRate; }
-                        isPriceLocked = (price == minPrice);
+                        qty = double.tryParse(v) ?? 0;
+                        qtyError = qty <= 0 ? 'لا يمكن أن تكون صفراً أو سالبة' : null;
                       });
-                    }
-                  },
-                  decoration: const InputDecoration(labelText: 'الوحدة'),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  key: ValueKey(price),
-                  initialValue: _rawNum(price),
-                  keyboardType: TextInputType.number,
-                  readOnly: isPriceLocked,
-                  decoration: InputDecoration(
-                    labelText: isPriceLocked ? 'السعر (مقفل على الحد الأدنى)' : 'السعر الإفرادي',
-                    filled: isPriceLocked,
+                    },
                   ),
-                  onChanged: (v) => price = double.tryParse(v) ?? price,
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: u,
+                    decoration: const InputDecoration(labelText: 'الوحدة', border: OutlineInputBorder()),
+                    items:[
+                      if (product.unit1.isNotEmpty) DropdownMenuItem(value: product.unit1, child: Text(product.unit1)),
+                      if (product.unit2.isNotEmpty) DropdownMenuItem(value: product.unit2, child: Text(product.unit2)),
+                      if (product.unit3.isNotEmpty) DropdownMenuItem(value: product.unit3, child: Text(product.unit3)),
+                    ],
+                    onChanged: (v) {
+                      if (v != null) {
+                        setState(() {
+                          u = v;
+                          if (v == product.unit1) { price = product.shopPrice1 * currencyRate; minPrice = product.minPrice1 * currencyRate; }
+                          if (v == product.unit2) { price = product.shopPrice2 * currencyRate; minPrice = product.minPrice2 * currencyRate; }
+                          if (v == product.unit3) { price = product.shopPrice3 * currencyRate; minPrice = product.minPrice3 * currencyRate; }
+                          priceCtrl.text = _rawNum(price);
+                          isPriceLocked = (price == minPrice && minPrice > 0);
+                          priceError = null;
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: priceCtrl,
+                    keyboardType: TextInputType.number,
+                    readOnly: isPriceLocked,
+                    decoration: InputDecoration(
+                      labelText: isPriceLocked ? 'السعر (مقفل على الحد الأدنى)' : 'السعر الإفرادي',
+                      filled: isPriceLocked,
+                      fillColor: isPriceLocked ? Colors.grey.shade200 : Colors.white,
+                      border: const OutlineInputBorder(),
+                      errorText: priceError,
+                      suffixIcon: isPriceLocked ? null : IconButton(icon: const Icon(Icons.clear, size: 18), onPressed: () { priceCtrl.clear(); setState(() => price = 0); }),
+                    ),
+                    onChanged: (v) {
+                      setState(() {
+                        price = double.tryParse(v) ?? 0;
+                        if (price <= 0) {
+                          priceError = 'لا يمكن أن يكون صفراً أو سالباً';
+                        } else if (minPrice > 0 && price < minPrice) {
+                          priceError = 'لا يمكن النزول تحت الأدنى: ${_formatNum(minPrice)}';
+                        } else {
+                          priceError = null;
+                        }
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 6),
+                  if (minPrice > 0)
+                    Text('السعر الأدنى: ${_formatNum(minPrice)}', style: TextStyle(color: Colors.grey.shade700, fontSize: 12, fontWeight: FontWeight.bold)),
+                ],
+              ),
             ),
             actions:[
               TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
               ElevatedButton(
                 onPressed: () {
-                  if (qty <= 0) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('الكمية يجب أن تكون أكبر من صفر'), backgroundColor: Colors.red));
-                    return;
+                  setState(() {
+                    qtyError = qty <= 0 ? 'لا يمكن أن تكون صفراً أو سالبة' : null;
+                    if (price <= 0) {
+                      priceError = 'لا يمكن أن يكون صفراً أو سالباً';
+                    } else if (minPrice > 0 && price < minPrice) {
+                      priceError = 'لا يمكن النزول تحت السعر الأدنى';
+                    } else {
+                      priceError = null;
+                    }
+                  });
+
+                  if (qtyError == null && priceError == null) {
+                    cubit.updateItem(index, qty, u, price);
+                    Navigator.pop(ctx);
                   }
-                  if (price <= 0) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('السعر يجب أن يكون أكبر من صفر'), backgroundColor: Colors.red));
-                    return;
-                  }
-                  if (minPrice > 0 && price < minPrice) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('السعر أقل من الأدنى: ${_formatNum(minPrice)}'), backgroundColor: Colors.red));
-                    return;
-                  }
-                  cubit.updateItem(index, qty, u, price);
-                  Navigator.pop(ctx);
                 },
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade700),
                 child: const Text('حفظ التعديل', style: TextStyle(color: Colors.white)),

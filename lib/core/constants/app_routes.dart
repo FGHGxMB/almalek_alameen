@@ -19,4 +19,7 @@ class AppRoutes {
 
   static const String basicInfo = '/basic-info';
   static const String productsManagement = '/products-management';
+
+  static const String productForm = '/product-form';
+  static const String currencyHistory = '/currency-history';
 }

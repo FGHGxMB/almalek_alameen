@@ -14,23 +14,54 @@ class SettingsCubit extends Cubit<SettingsState> {
     _listenToAppConfig();
   }
 
+  StreamSubscription? _productsSub;
+
   void _listenToAppConfig() {
-    _configSub = _firestore.collection(FirestoreKeys.settings).doc(FirestoreKeys.appConfigDoc)
-        .snapshots(includeMetadataChanges: true).listen((doc) {
+    bool configSynced = true;
+    bool prodSynced = true;
+    double rate = 1.0;
+
+    _configSub = _firestore.collection(FirestoreKeys.settings).doc(FirestoreKeys.appConfigDoc).snapshots(includeMetadataChanges: true).listen((doc) {
       if (doc.exists) {
-        final rate = (doc.data()?['currency_rate'] ?? 1.0).toDouble();
-        final isSynced = !doc.metadata.hasPendingWrites; // السحر الخاص بالأوفلاين
-        emit(SettingsLoaded(rate, isSynced));
+        rate = (doc.data()?['currency_rate'] ?? 1.0).toDouble();
+        configSynced = !doc.metadata.hasPendingWrites;
+        emit(SettingsLoaded(rate, configSynced, prodSynced));
       }
+    });
+
+    _productsSub = _firestore.collection(FirestoreKeys.products).snapshots(includeMetadataChanges: true).listen((snap) {
+      prodSynced = !snap.metadata.hasPendingWrites;
+      if (state is SettingsLoaded) emit(SettingsLoaded(rate, configSynced, prodSynced));
     });
   }
 
-  Future<void> updateCurrencyRate(double newRate) async {
+  Future<void> updateCurrencyRate(double newRate, String userName) async {
     try {
-      await _firestore.collection(FirestoreKeys.settings).doc(FirestoreKeys.appConfigDoc).update({
-        'currency_rate': newRate,
+      final batch = _firestore.batch();
+
+      // 1. تحديث السعر في الإعدادات
+      final configRef = _firestore.collection(FirestoreKeys.settings).doc(FirestoreKeys.appConfigDoc);
+      batch.update(configRef, {'currency_rate': newRate});
+
+      // 2. تسجيل الحركة في سجل التاريخ
+      final historyRef = _firestore.collection(FirestoreKeys.currencyHistory).doc();
+      batch.set(historyRef, {
+        'rate': newRate,
+        'user_name': userName,
+        'date': FieldValue.serverTimestamp(),
       });
-      // لا نُصدر حالة Success هنا لأن الـ Stream سيحدث الـ UI تلقائياً
+
+      await batch.commit();
+
+      // 3. تنظيف السجل (الاحتفاظ بآخر 50 تغييراً فقط)
+      final snap = await _firestore.collection(FirestoreKeys.currencyHistory).orderBy('date', descending: true).get();
+      if (snap.docs.length > 50) {
+        final batchDelete = _firestore.batch();
+        for (int i = 50; i < snap.docs.length; i++) {
+          batchDelete.delete(snap.docs[i].reference);
+        }
+        await batchDelete.commit();
+      }
     } catch (e) {
       emit(SettingsError('حدث خطأ أثناء حفظ سعر الدولار: $e'));
     }
@@ -57,6 +88,7 @@ class SettingsCubit extends Cubit<SettingsState> {
   @override
   Future<void> close() {
     _configSub?.cancel();
+    _productsSub?.cancel();
     return super.close();
   }
 }

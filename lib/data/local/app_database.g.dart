@@ -164,6 +164,54 @@ class $ProductsTableTable extends ProductsTable
       type: DriftSqlType.double,
       requiredDuringInsert: false,
       defaultValue: const Constant(0.0));
+  static const VerificationMeta _costPrice1Meta =
+      const VerificationMeta('costPrice1');
+  @override
+  late final GeneratedColumn<double> costPrice1 = GeneratedColumn<double>(
+      'cost_price1', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0.0));
+  static const VerificationMeta _costPrice2Meta =
+      const VerificationMeta('costPrice2');
+  @override
+  late final GeneratedColumn<double> costPrice2 = GeneratedColumn<double>(
+      'cost_price2', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0.0));
+  static const VerificationMeta _costPrice3Meta =
+      const VerificationMeta('costPrice3');
+  @override
+  late final GeneratedColumn<double> costPrice3 = GeneratedColumn<double>(
+      'cost_price3', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0.0));
+  static const VerificationMeta _currency1Meta =
+      const VerificationMeta('currency1');
+  @override
+  late final GeneratedColumn<String> currency1 = GeneratedColumn<String>(
+      'currency1', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('USD'));
+  static const VerificationMeta _currency2Meta =
+      const VerificationMeta('currency2');
+  @override
+  late final GeneratedColumn<String> currency2 = GeneratedColumn<String>(
+      'currency2', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('USD'));
+  static const VerificationMeta _currency3Meta =
+      const VerificationMeta('currency3');
+  @override
+  late final GeneratedColumn<String> currency3 = GeneratedColumn<String>(
+      'currency3', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('USD'));
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -190,7 +238,13 @@ class $ProductsTableTable extends ProductsTable
         consumerPrice3,
         minPrice1,
         minPrice2,
-        minPrice3
+        minPrice3,
+        costPrice1,
+        costPrice2,
+        costPrice3,
+        currency1,
+        currency2,
+        currency3
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -363,6 +417,36 @@ class $ProductsTableTable extends ProductsTable
       context.handle(_minPrice3Meta,
           minPrice3.isAcceptableOrUnknown(data['min_price3']!, _minPrice3Meta));
     }
+    if (data.containsKey('cost_price1')) {
+      context.handle(
+          _costPrice1Meta,
+          costPrice1.isAcceptableOrUnknown(
+              data['cost_price1']!, _costPrice1Meta));
+    }
+    if (data.containsKey('cost_price2')) {
+      context.handle(
+          _costPrice2Meta,
+          costPrice2.isAcceptableOrUnknown(
+              data['cost_price2']!, _costPrice2Meta));
+    }
+    if (data.containsKey('cost_price3')) {
+      context.handle(
+          _costPrice3Meta,
+          costPrice3.isAcceptableOrUnknown(
+              data['cost_price3']!, _costPrice3Meta));
+    }
+    if (data.containsKey('currency1')) {
+      context.handle(_currency1Meta,
+          currency1.isAcceptableOrUnknown(data['currency1']!, _currency1Meta));
+    }
+    if (data.containsKey('currency2')) {
+      context.handle(_currency2Meta,
+          currency2.isAcceptableOrUnknown(data['currency2']!, _currency2Meta));
+    }
+    if (data.containsKey('currency3')) {
+      context.handle(_currency3Meta,
+          currency3.isAcceptableOrUnknown(data['currency3']!, _currency3Meta));
+    }
     return context;
   }
 
@@ -422,6 +506,18 @@ class $ProductsTableTable extends ProductsTable
           .read(DriftSqlType.double, data['${effectivePrefix}min_price2'])!,
       minPrice3: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}min_price3'])!,
+      costPrice1: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}cost_price1'])!,
+      costPrice2: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}cost_price2'])!,
+      costPrice3: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}cost_price3'])!,
+      currency1: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}currency1'])!,
+      currency2: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}currency2'])!,
+      currency3: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}currency3'])!,
     );
   }
 
@@ -458,6 +554,12 @@ class ProductsTableData extends DataClass
   final double minPrice1;
   final double minPrice2;
   final double minPrice3;
+  final double costPrice1;
+  final double costPrice2;
+  final double costPrice3;
+  final String currency1;
+  final String currency2;
+  final String currency3;
   const ProductsTableData(
       {required this.id,
       required this.itemCode,
@@ -483,7 +585,13 @@ class ProductsTableData extends DataClass
       required this.consumerPrice3,
       required this.minPrice1,
       required this.minPrice2,
-      required this.minPrice3});
+      required this.minPrice3,
+      required this.costPrice1,
+      required this.costPrice2,
+      required this.costPrice3,
+      required this.currency1,
+      required this.currency2,
+      required this.currency3});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -512,6 +620,12 @@ class ProductsTableData extends DataClass
     map['min_price1'] = Variable<double>(minPrice1);
     map['min_price2'] = Variable<double>(minPrice2);
     map['min_price3'] = Variable<double>(minPrice3);
+    map['cost_price1'] = Variable<double>(costPrice1);
+    map['cost_price2'] = Variable<double>(costPrice2);
+    map['cost_price3'] = Variable<double>(costPrice3);
+    map['currency1'] = Variable<String>(currency1);
+    map['currency2'] = Variable<String>(currency2);
+    map['currency3'] = Variable<String>(currency3);
     return map;
   }
 
@@ -542,6 +656,12 @@ class ProductsTableData extends DataClass
       minPrice1: Value(minPrice1),
       minPrice2: Value(minPrice2),
       minPrice3: Value(minPrice3),
+      costPrice1: Value(costPrice1),
+      costPrice2: Value(costPrice2),
+      costPrice3: Value(costPrice3),
+      currency1: Value(currency1),
+      currency2: Value(currency2),
+      currency3: Value(currency3),
     );
   }
 
@@ -574,6 +694,12 @@ class ProductsTableData extends DataClass
       minPrice1: serializer.fromJson<double>(json['minPrice1']),
       minPrice2: serializer.fromJson<double>(json['minPrice2']),
       minPrice3: serializer.fromJson<double>(json['minPrice3']),
+      costPrice1: serializer.fromJson<double>(json['costPrice1']),
+      costPrice2: serializer.fromJson<double>(json['costPrice2']),
+      costPrice3: serializer.fromJson<double>(json['costPrice3']),
+      currency1: serializer.fromJson<String>(json['currency1']),
+      currency2: serializer.fromJson<String>(json['currency2']),
+      currency3: serializer.fromJson<String>(json['currency3']),
     );
   }
   @override
@@ -605,6 +731,12 @@ class ProductsTableData extends DataClass
       'minPrice1': serializer.toJson<double>(minPrice1),
       'minPrice2': serializer.toJson<double>(minPrice2),
       'minPrice3': serializer.toJson<double>(minPrice3),
+      'costPrice1': serializer.toJson<double>(costPrice1),
+      'costPrice2': serializer.toJson<double>(costPrice2),
+      'costPrice3': serializer.toJson<double>(costPrice3),
+      'currency1': serializer.toJson<String>(currency1),
+      'currency2': serializer.toJson<String>(currency2),
+      'currency3': serializer.toJson<String>(currency3),
     };
   }
 
@@ -633,7 +765,13 @@ class ProductsTableData extends DataClass
           double? consumerPrice3,
           double? minPrice1,
           double? minPrice2,
-          double? minPrice3}) =>
+          double? minPrice3,
+          double? costPrice1,
+          double? costPrice2,
+          double? costPrice3,
+          String? currency1,
+          String? currency2,
+          String? currency3}) =>
       ProductsTableData(
         id: id ?? this.id,
         itemCode: itemCode ?? this.itemCode,
@@ -660,6 +798,12 @@ class ProductsTableData extends DataClass
         minPrice1: minPrice1 ?? this.minPrice1,
         minPrice2: minPrice2 ?? this.minPrice2,
         minPrice3: minPrice3 ?? this.minPrice3,
+        costPrice1: costPrice1 ?? this.costPrice1,
+        costPrice2: costPrice2 ?? this.costPrice2,
+        costPrice3: costPrice3 ?? this.costPrice3,
+        currency1: currency1 ?? this.currency1,
+        currency2: currency2 ?? this.currency2,
+        currency3: currency3 ?? this.currency3,
       );
   ProductsTableData copyWithCompanion(ProductsTableCompanion data) {
     return ProductsTableData(
@@ -701,6 +845,15 @@ class ProductsTableData extends DataClass
       minPrice1: data.minPrice1.present ? data.minPrice1.value : this.minPrice1,
       minPrice2: data.minPrice2.present ? data.minPrice2.value : this.minPrice2,
       minPrice3: data.minPrice3.present ? data.minPrice3.value : this.minPrice3,
+      costPrice1:
+          data.costPrice1.present ? data.costPrice1.value : this.costPrice1,
+      costPrice2:
+          data.costPrice2.present ? data.costPrice2.value : this.costPrice2,
+      costPrice3:
+          data.costPrice3.present ? data.costPrice3.value : this.costPrice3,
+      currency1: data.currency1.present ? data.currency1.value : this.currency1,
+      currency2: data.currency2.present ? data.currency2.value : this.currency2,
+      currency3: data.currency3.present ? data.currency3.value : this.currency3,
     );
   }
 
@@ -731,7 +884,13 @@ class ProductsTableData extends DataClass
           ..write('consumerPrice3: $consumerPrice3, ')
           ..write('minPrice1: $minPrice1, ')
           ..write('minPrice2: $minPrice2, ')
-          ..write('minPrice3: $minPrice3')
+          ..write('minPrice3: $minPrice3, ')
+          ..write('costPrice1: $costPrice1, ')
+          ..write('costPrice2: $costPrice2, ')
+          ..write('costPrice3: $costPrice3, ')
+          ..write('currency1: $currency1, ')
+          ..write('currency2: $currency2, ')
+          ..write('currency3: $currency3')
           ..write(')'))
         .toString();
   }
@@ -762,7 +921,13 @@ class ProductsTableData extends DataClass
         consumerPrice3,
         minPrice1,
         minPrice2,
-        minPrice3
+        minPrice3,
+        costPrice1,
+        costPrice2,
+        costPrice3,
+        currency1,
+        currency2,
+        currency3
       ]);
   @override
   bool operator ==(Object other) =>
@@ -792,7 +957,13 @@ class ProductsTableData extends DataClass
           other.consumerPrice3 == this.consumerPrice3 &&
           other.minPrice1 == this.minPrice1 &&
           other.minPrice2 == this.minPrice2 &&
-          other.minPrice3 == this.minPrice3);
+          other.minPrice3 == this.minPrice3 &&
+          other.costPrice1 == this.costPrice1 &&
+          other.costPrice2 == this.costPrice2 &&
+          other.costPrice3 == this.costPrice3 &&
+          other.currency1 == this.currency1 &&
+          other.currency2 == this.currency2 &&
+          other.currency3 == this.currency3);
 }
 
 class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
@@ -821,6 +992,12 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
   final Value<double> minPrice1;
   final Value<double> minPrice2;
   final Value<double> minPrice3;
+  final Value<double> costPrice1;
+  final Value<double> costPrice2;
+  final Value<double> costPrice3;
+  final Value<String> currency1;
+  final Value<String> currency2;
+  final Value<String> currency3;
   final Value<int> rowid;
   const ProductsTableCompanion({
     this.id = const Value.absent(),
@@ -848,6 +1025,12 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
     this.minPrice1 = const Value.absent(),
     this.minPrice2 = const Value.absent(),
     this.minPrice3 = const Value.absent(),
+    this.costPrice1 = const Value.absent(),
+    this.costPrice2 = const Value.absent(),
+    this.costPrice3 = const Value.absent(),
+    this.currency1 = const Value.absent(),
+    this.currency2 = const Value.absent(),
+    this.currency3 = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ProductsTableCompanion.insert({
@@ -876,6 +1059,12 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
     this.minPrice1 = const Value.absent(),
     this.minPrice2 = const Value.absent(),
     this.minPrice3 = const Value.absent(),
+    this.costPrice1 = const Value.absent(),
+    this.costPrice2 = const Value.absent(),
+    this.costPrice3 = const Value.absent(),
+    this.currency1 = const Value.absent(),
+    this.currency2 = const Value.absent(),
+    this.currency3 = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         itemCode = Value(itemCode),
@@ -925,6 +1114,12 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
     Expression<double>? minPrice1,
     Expression<double>? minPrice2,
     Expression<double>? minPrice3,
+    Expression<double>? costPrice1,
+    Expression<double>? costPrice2,
+    Expression<double>? costPrice3,
+    Expression<String>? currency1,
+    Expression<String>? currency2,
+    Expression<String>? currency3,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -953,6 +1148,12 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
       if (minPrice1 != null) 'min_price1': minPrice1,
       if (minPrice2 != null) 'min_price2': minPrice2,
       if (minPrice3 != null) 'min_price3': minPrice3,
+      if (costPrice1 != null) 'cost_price1': costPrice1,
+      if (costPrice2 != null) 'cost_price2': costPrice2,
+      if (costPrice3 != null) 'cost_price3': costPrice3,
+      if (currency1 != null) 'currency1': currency1,
+      if (currency2 != null) 'currency2': currency2,
+      if (currency3 != null) 'currency3': currency3,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -983,6 +1184,12 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
       Value<double>? minPrice1,
       Value<double>? minPrice2,
       Value<double>? minPrice3,
+      Value<double>? costPrice1,
+      Value<double>? costPrice2,
+      Value<double>? costPrice3,
+      Value<String>? currency1,
+      Value<String>? currency2,
+      Value<String>? currency3,
       Value<int>? rowid}) {
     return ProductsTableCompanion(
       id: id ?? this.id,
@@ -1010,6 +1217,12 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
       minPrice1: minPrice1 ?? this.minPrice1,
       minPrice2: minPrice2 ?? this.minPrice2,
       minPrice3: minPrice3 ?? this.minPrice3,
+      costPrice1: costPrice1 ?? this.costPrice1,
+      costPrice2: costPrice2 ?? this.costPrice2,
+      costPrice3: costPrice3 ?? this.costPrice3,
+      currency1: currency1 ?? this.currency1,
+      currency2: currency2 ?? this.currency2,
+      currency3: currency3 ?? this.currency3,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1092,6 +1305,24 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
     if (minPrice3.present) {
       map['min_price3'] = Variable<double>(minPrice3.value);
     }
+    if (costPrice1.present) {
+      map['cost_price1'] = Variable<double>(costPrice1.value);
+    }
+    if (costPrice2.present) {
+      map['cost_price2'] = Variable<double>(costPrice2.value);
+    }
+    if (costPrice3.present) {
+      map['cost_price3'] = Variable<double>(costPrice3.value);
+    }
+    if (currency1.present) {
+      map['currency1'] = Variable<String>(currency1.value);
+    }
+    if (currency2.present) {
+      map['currency2'] = Variable<String>(currency2.value);
+    }
+    if (currency3.present) {
+      map['currency3'] = Variable<String>(currency3.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1126,6 +1357,12 @@ class ProductsTableCompanion extends UpdateCompanion<ProductsTableData> {
           ..write('minPrice1: $minPrice1, ')
           ..write('minPrice2: $minPrice2, ')
           ..write('minPrice3: $minPrice3, ')
+          ..write('costPrice1: $costPrice1, ')
+          ..write('costPrice2: $costPrice2, ')
+          ..write('costPrice3: $costPrice3, ')
+          ..write('currency1: $currency1, ')
+          ..write('currency2: $currency2, ')
+          ..write('currency3: $currency3, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1170,6 +1407,12 @@ typedef $$ProductsTableTableCreateCompanionBuilder = ProductsTableCompanion
   Value<double> minPrice1,
   Value<double> minPrice2,
   Value<double> minPrice3,
+  Value<double> costPrice1,
+  Value<double> costPrice2,
+  Value<double> costPrice3,
+  Value<String> currency1,
+  Value<String> currency2,
+  Value<String> currency3,
   Value<int> rowid,
 });
 typedef $$ProductsTableTableUpdateCompanionBuilder = ProductsTableCompanion
@@ -1199,6 +1442,12 @@ typedef $$ProductsTableTableUpdateCompanionBuilder = ProductsTableCompanion
   Value<double> minPrice1,
   Value<double> minPrice2,
   Value<double> minPrice3,
+  Value<double> costPrice1,
+  Value<double> costPrice2,
+  Value<double> costPrice3,
+  Value<String> currency1,
+  Value<String> currency2,
+  Value<String> currency3,
   Value<int> rowid,
 });
 
@@ -1288,6 +1537,24 @@ class $$ProductsTableTableFilterComposer
 
   ColumnFilters<double> get minPrice3 => $composableBuilder(
       column: $table.minPrice3, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get costPrice1 => $composableBuilder(
+      column: $table.costPrice1, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get costPrice2 => $composableBuilder(
+      column: $table.costPrice2, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get costPrice3 => $composableBuilder(
+      column: $table.costPrice3, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get currency1 => $composableBuilder(
+      column: $table.currency1, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get currency2 => $composableBuilder(
+      column: $table.currency2, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get currency3 => $composableBuilder(
+      column: $table.currency3, builder: (column) => ColumnFilters(column));
 }
 
 class $$ProductsTableTableOrderingComposer
@@ -1377,6 +1644,24 @@ class $$ProductsTableTableOrderingComposer
 
   ColumnOrderings<double> get minPrice3 => $composableBuilder(
       column: $table.minPrice3, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get costPrice1 => $composableBuilder(
+      column: $table.costPrice1, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get costPrice2 => $composableBuilder(
+      column: $table.costPrice2, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get costPrice3 => $composableBuilder(
+      column: $table.costPrice3, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get currency1 => $composableBuilder(
+      column: $table.currency1, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get currency2 => $composableBuilder(
+      column: $table.currency2, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get currency3 => $composableBuilder(
+      column: $table.currency3, builder: (column) => ColumnOrderings(column));
 }
 
 class $$ProductsTableTableAnnotationComposer
@@ -1462,6 +1747,24 @@ class $$ProductsTableTableAnnotationComposer
 
   GeneratedColumn<double> get minPrice3 =>
       $composableBuilder(column: $table.minPrice3, builder: (column) => column);
+
+  GeneratedColumn<double> get costPrice1 => $composableBuilder(
+      column: $table.costPrice1, builder: (column) => column);
+
+  GeneratedColumn<double> get costPrice2 => $composableBuilder(
+      column: $table.costPrice2, builder: (column) => column);
+
+  GeneratedColumn<double> get costPrice3 => $composableBuilder(
+      column: $table.costPrice3, builder: (column) => column);
+
+  GeneratedColumn<String> get currency1 =>
+      $composableBuilder(column: $table.currency1, builder: (column) => column);
+
+  GeneratedColumn<String> get currency2 =>
+      $composableBuilder(column: $table.currency2, builder: (column) => column);
+
+  GeneratedColumn<String> get currency3 =>
+      $composableBuilder(column: $table.currency3, builder: (column) => column);
 }
 
 class $$ProductsTableTableTableManager extends RootTableManager<
@@ -1515,6 +1818,12 @@ class $$ProductsTableTableTableManager extends RootTableManager<
             Value<double> minPrice1 = const Value.absent(),
             Value<double> minPrice2 = const Value.absent(),
             Value<double> minPrice3 = const Value.absent(),
+            Value<double> costPrice1 = const Value.absent(),
+            Value<double> costPrice2 = const Value.absent(),
+            Value<double> costPrice3 = const Value.absent(),
+            Value<String> currency1 = const Value.absent(),
+            Value<String> currency2 = const Value.absent(),
+            Value<String> currency3 = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               ProductsTableCompanion(
@@ -1543,6 +1852,12 @@ class $$ProductsTableTableTableManager extends RootTableManager<
             minPrice1: minPrice1,
             minPrice2: minPrice2,
             minPrice3: minPrice3,
+            costPrice1: costPrice1,
+            costPrice2: costPrice2,
+            costPrice3: costPrice3,
+            currency1: currency1,
+            currency2: currency2,
+            currency3: currency3,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -1571,6 +1886,12 @@ class $$ProductsTableTableTableManager extends RootTableManager<
             Value<double> minPrice1 = const Value.absent(),
             Value<double> minPrice2 = const Value.absent(),
             Value<double> minPrice3 = const Value.absent(),
+            Value<double> costPrice1 = const Value.absent(),
+            Value<double> costPrice2 = const Value.absent(),
+            Value<double> costPrice3 = const Value.absent(),
+            Value<String> currency1 = const Value.absent(),
+            Value<String> currency2 = const Value.absent(),
+            Value<String> currency3 = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               ProductsTableCompanion.insert(
@@ -1599,6 +1920,12 @@ class $$ProductsTableTableTableManager extends RootTableManager<
             minPrice1: minPrice1,
             minPrice2: minPrice2,
             minPrice3: minPrice3,
+            costPrice1: costPrice1,
+            costPrice2: costPrice2,
+            costPrice3: costPrice3,
+            currency1: currency1,
+            currency2: currency2,
+            currency3: currency3,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

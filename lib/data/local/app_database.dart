@@ -40,6 +40,14 @@ class ProductsTable extends Table {
   RealColumn get minPrice2 => real().withDefault(const Constant(0.0))();
   RealColumn get minPrice3 => real().withDefault(const Constant(0.0))();
 
+  RealColumn get costPrice1 => real().withDefault(const Constant(0.0))();
+  RealColumn get costPrice2 => real().withDefault(const Constant(0.0))();
+  RealColumn get costPrice3 => real().withDefault(const Constant(0.0))();
+
+  TextColumn get currency1 => text().withDefault(const Constant('USD'))();
+  TextColumn get currency2 => text().withDefault(const Constant('USD'))();
+  TextColumn get currency3 => text().withDefault(const Constant('USD'))();
+
   @override
   Set<Column> get primaryKey => {id};
 }

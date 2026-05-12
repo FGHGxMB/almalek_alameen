@@ -35,6 +35,12 @@ class ProductsCache {
       minPrice1: Value(p.minPrice1),
       minPrice2: Value(p.minPrice2),
       minPrice3: Value(p.minPrice3),
+      costPrice1: Value(p.costPrice1),
+      costPrice2: Value(p.costPrice2),
+      costPrice3: Value(p.costPrice3),
+      currency1: Value(p.currency1),
+      currency2: Value(p.currency2),
+      currency3: Value(p.currency3),
     )).toList();
 
     await _db.replaceAllProducts(companions);
@@ -59,6 +65,12 @@ class ProductsCache {
       minPrice1: row.minPrice1,
       minPrice2: row.minPrice2,
       minPrice3: row.minPrice3,
+      costPrice1: row.costPrice1,
+      costPrice2: row.costPrice2,
+      costPrice3: row.costPrice3,
+      currency1: row.currency1,
+      currency2: row.currency2,
+      currency3: row.currency3,
     )).toList();
   }
 }

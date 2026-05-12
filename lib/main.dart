@@ -1,22 +1,5 @@
 // lib/main.dart
-import 'package:spice_app/data/models/invoice_model.dart';
-import 'package:spice_app/data/models/return_model.dart';
 
-import 'package:spice_app/ui/screens/transactions/invoice_form_screen.dart';
-
-import 'data/models/customer_model.dart';
-import 'data/repositories/admin_repository.dart';
-import 'ui/screens/admin/admin_screen.dart';
-import 'ui/screens/admin/user_edit_screen.dart';
-import 'data/models/user_model.dart'; // نحتاجها لاحقاً للـ extra
-import 'data/repositories/company_accounts_repository.dart';
-import 'ui/screens/customers/customer_form_screen.dart';
-import 'ui/screens/transactions/return_form_screen.dart';
-import 'data/repositories/customers_repository.dart';
-import 'ui/screens/transactions/receipt_form_screen.dart';
-import 'data/repositories/transactions_repository.dart';
-import 'data/repositories/dashboard_repository.dart';
-import 'ui/screens/main_layout/main_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -24,22 +7,56 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'firebase_options.dart';
 
+// --- الثوابت والمسارات ---
 import 'core/constants/app_routes.dart';
+
+// --- الخدمات ---
 import 'core/services/auth_service.dart';
 import 'core/services/firestore_service.dart';
-import 'data/repositories/auth_repository.dart';
-import 'data/repositories/products_repository.dart';
+
+// --- قواعد البيانات المحلية والكاش ---
 import 'data/local/app_database.dart';
 import 'data/local/local_storage.dart';
 import 'data/local/products_cache.dart';
 import 'data/local/areas_cache.dart';
+
+// --- المستودعات (Repositories) ---
+import 'data/repositories/auth_repository.dart';
+import 'data/repositories/products_repository.dart';
+import 'data/repositories/dashboard_repository.dart';
+import 'data/repositories/transactions_repository.dart';
+import 'data/repositories/customers_repository.dart';
+import 'data/repositories/company_accounts_repository.dart';
+import 'data/repositories/admin_repository.dart';
+
+// --- النماذج (Models) ---
+import 'data/models/user_model.dart';
+import 'data/models/customer_model.dart';
+import 'data/models/invoice_model.dart';
+import 'data/models/return_model.dart';
+import 'data/models/receipt_model.dart';
+import 'data/models/unified_transaction.dart';
+import 'data/models/product_model.dart';
+
+// --- إدارة الحالة الأساسية ---
 import 'logic/auth/auth_cubit.dart';
 import 'logic/auth/auth_state.dart';
+import 'logic/products_management/products_management_cubit.dart';
+
+// --- الشاشات (Screens) ---
 import 'ui/screens/auth/login_screen.dart';
+import 'ui/screens/main_layout/main_layout.dart';
+import 'ui/screens/settings/currency_history_screen.dart';
+import 'ui/screens/transactions/invoice_form_screen.dart';
+import 'ui/screens/transactions/return_form_screen.dart';
+import 'ui/screens/transactions/receipt_form_screen.dart';
 import 'ui/screens/transactions/transaction_details_screen.dart';
-import 'data/models/unified_transaction.dart';
-import 'data/models/receipt_model.dart';
+import 'ui/screens/customers/customer_form_screen.dart';
+import 'ui/screens/admin/admin_screen.dart';
+import 'ui/screens/admin/user_edit_screen.dart';
 import 'ui/screens/settings/basic_info_screen.dart';
+import 'ui/screens/products_management/products_management_screen.dart';
+import 'ui/screens/products_management/product_form_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -70,17 +87,13 @@ void main() async {
   );
 
   final dashboardRepository = DashboardRepository();
-
   final transactionsRepository = TransactionsRepository();
-
   final customersRepository = CustomersRepository();
-
   final companyAccountsRepository = CompanyAccountsRepository();
-
   final adminRepository = AdminRepository();
 
-  // تحديث المواد والمناطق فور فتح التطبيق بالخفاء
-  productsRepository.syncProductsAndAreas();
+  // الاستماع الحي لتحديثات المواد والمناطق وتحديث الكاش تلقائياً
+  productsRepository.listenToVersionChanges();
 
   runApp(MyApp(
     authRepository: authRepository,
@@ -147,7 +160,7 @@ class MyApp extends StatelessWidget {
       ),
       GoRoute(
         path: AppRoutes.admin,
-        builder: (context, state) => const AdminScreen(), // <--- شاشة الأدمن الحقيقية
+        builder: (context, state) => const AdminScreen(),
       ),
       GoRoute(
         path: AppRoutes.userEdit,
@@ -164,11 +177,11 @@ class MyApp extends StatelessWidget {
             final extra = state.extra as Map<String, dynamic>? ?? {};
             final target = extra['targetDelegateId'] as String?;
             final customer = extra['customer'] as CustomerModel?;
-            final ownerSuffix = extra['ownerSuffix'] as String? ?? ''; // جلب البادئة
+            final ownerSuffix = extra['ownerSuffix'] as String? ?? '';
             return CustomerFormScreen(
               customerToEdit: customer,
               targetDelegateId: target,
-              ownerSuffix: ownerSuffix, // تمريرها
+              ownerSuffix: ownerSuffix,
             );
           }
       ),
@@ -181,22 +194,40 @@ class MyApp extends StatelessWidget {
       ),
       GoRoute(
         path: AppRoutes.basicInfo,
-        builder: (context, state) => const BasicInfoScreen(), // الشاشة الحقيقية
+        builder: (context, state) => const BasicInfoScreen(),
       ),
       GoRoute(
         path: AppRoutes.productsManagement,
-        builder: (context, state) => Scaffold(appBar: AppBar(title: const Text('إدارة المواد')), body: const Center(child: Text('شاشة إدارة المواد والأسعار - قيد البرمجة'))),
+        builder: (context, state) => const ProductsManagementScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.productForm,
+        builder: (context, state) {
+          final extra = state.extra;
+          return BlocProvider(
+            create: (context) => ProductsManagementCubit(context.read<ProductsRepository>()),
+            child: Builder(
+                builder: (ctx) {
+                  if (extra is ProductModel) return ProductFormScreen(productToEdit: extra);
+                  if (extra is Map<String, dynamic>) return ProductFormScreen(initialTab: extra['tab'], initialCol: extra['col'], initialRow: extra['row']);
+                  return const ProductFormScreen();
+                }
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.currencyHistory,
+        builder: (context, state) => const CurrencyHistoryScreen(),
       ),
     ],
     redirect: (context, state) {
       final authState = context.read<AuthCubit>().state;
       final isLoggingIn = state.matchedLocation == AppRoutes.login;
 
-      // إذا لم يسجل دخول ولا يحاول تسجيل الدخول -> اذهب للـ login
       if (authState is AuthUnauthenticated && !isLoggingIn) {
         return AppRoutes.login;
       }
-      // إذا مسجل دخول ويحاول فتح شاشة الـ login -> اذهب للـ mainLayout
       if (authState is AuthAuthenticated && isLoggingIn) {
         return AppRoutes.mainLayout;
       }
@@ -237,7 +268,7 @@ class MyApp extends StatelessWidget {
             theme: ThemeData(
               primarySwatch: Colors.teal,
               useMaterial3: true,
-              fontFamily: 'Tajawal',
+              fontFamily: 'Tajawal', // تأكد من إضافة الخط في pubspec.yaml لاحقاً
             ),
             routerConfig: _router,
           ),

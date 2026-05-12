@@ -14,6 +14,7 @@ class PermissionsModel {
   final bool invoiceCreateMonitored; final bool invoiceEditMonitored; final bool invoiceDeleteMonitored;
   final bool returnCreateMonitored; final bool returnEditMonitored; final bool returnDeleteMonitored;
   final bool receiptCreateMonitored; final bool receiptEditMonitored; final bool receiptDeleteMonitored;
+  final bool updateCurrency;
 
   PermissionsModel({
     required this.adminAccess, required this.exportData, required this.companyAccountsView, required this.companyAccountsEdit,
@@ -25,6 +26,7 @@ class PermissionsModel {
     required this.invoiceCreateMonitored, required this.invoiceEditMonitored, required this.invoiceDeleteMonitored,
     required this.returnCreateMonitored, required this.returnEditMonitored, required this.returnDeleteMonitored,
     required this.receiptCreateMonitored, required this.receiptEditMonitored, required this.receiptDeleteMonitored,
+    required this.updateCurrency,
   });
 
   factory PermissionsModel.fromMap(Map<String, dynamic> map) {
@@ -39,6 +41,7 @@ class PermissionsModel {
       invoiceCreateMonitored: map['invoice_create_monitored'] ?? false, invoiceEditMonitored: map['invoice_edit_monitored'] ?? false, invoiceDeleteMonitored: map['invoice_delete_monitored'] ?? false,
       returnCreateMonitored: map['return_create_monitored'] ?? false, returnEditMonitored: map['return_edit_monitored'] ?? false, returnDeleteMonitored: map['return_delete_monitored'] ?? false,
       receiptCreateMonitored: map['receipt_create_monitored'] ?? false, receiptEditMonitored: map['receipt_edit_monitored'] ?? false, receiptDeleteMonitored: map['receipt_delete_monitored'] ?? false,
+      updateCurrency: map['update_currency'] ?? false,
     );
   }
 
@@ -52,6 +55,7 @@ class PermissionsModel {
     'invoice_create_monitored': invoiceCreateMonitored, 'invoice_edit_monitored': invoiceEditMonitored, 'invoice_delete_monitored': invoiceDeleteMonitored,
     'return_create_monitored': returnCreateMonitored, 'return_edit_monitored': returnEditMonitored, 'return_delete_monitored': returnDeleteMonitored,
     'receipt_create_monitored': receiptCreateMonitored, 'receipt_edit_monitored': receiptEditMonitored, 'receipt_delete_monitored': receiptDeleteMonitored,
+    'update_currency': updateCurrency,
   };
 }
 

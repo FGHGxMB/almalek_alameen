@@ -46,6 +46,7 @@ class _UserEditScreenState extends State<UserEditScreen> {
     'invoiceCreateMonitored': false, 'invoiceEditMonitored': false, 'invoiceDeleteMonitored': false,
     'returnCreateMonitored': false, 'returnEditMonitored': false, 'returnDeleteMonitored': false,
     'receiptCreateMonitored': false, 'receiptEditMonitored': false, 'receiptDeleteMonitored': false,
+    'updateCurrency': false,
   };
 
   Color _hexToColor(String hex) {
@@ -75,6 +76,7 @@ class _UserEditScreenState extends State<UserEditScreen> {
       _perms['invoiceCreateMonitored'] = u.permissions.invoiceCreateMonitored; _perms['invoiceEditMonitored'] = u.permissions.invoiceEditMonitored; _perms['invoiceDeleteMonitored'] = u.permissions.invoiceDeleteMonitored;
       _perms['returnCreateMonitored'] = u.permissions.returnCreateMonitored; _perms['returnEditMonitored'] = u.permissions.returnEditMonitored; _perms['returnDeleteMonitored'] = u.permissions.returnDeleteMonitored;
       _perms['receiptCreateMonitored'] = u.permissions.receiptCreateMonitored; _perms['receiptEditMonitored'] = u.permissions.receiptEditMonitored; _perms['receiptDeleteMonitored'] = u.permissions.receiptDeleteMonitored;
+      _perms['updateCurrency'] = u.permissions.updateCurrency;
     }
   }
 
@@ -95,6 +97,7 @@ class _UserEditScreenState extends State<UserEditScreen> {
         'invoice_create_monitored': _perms['invoiceCreateMonitored'], 'invoice_edit_monitored': _perms['invoiceEditMonitored'], 'invoice_delete_monitored': _perms['invoiceDeleteMonitored'],
         'return_create_monitored': _perms['returnCreateMonitored'], 'return_edit_monitored': _perms['returnEditMonitored'], 'return_delete_monitored': _perms['returnDeleteMonitored'],
         'receipt_create_monitored': _perms['receiptCreateMonitored'], 'receipt_edit_monitored': _perms['receiptEditMonitored'], 'receipt_delete_monitored': _perms['receiptDeleteMonitored'],
+        'update_currency': _perms['updateCurrency'],
       };
 
       final userData = {
@@ -178,7 +181,7 @@ class _UserEditScreenState extends State<UserEditScreen> {
 
               const Text('الصلاحيات الأساسية (لحسابه الخاص)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.teal)),
               _buildToggle('لوحة الإدارة', 'adminAccess'), _buildToggle('تصدير Excel', 'exportData'),
-              _buildToggle('عرض حسابات الشركة', 'companyAccountsView'), _buildToggle('تعديل حسابات الشركة', 'companyAccountsEdit'),
+              _buildToggle('عرض حسابات الشركة', 'companyAccountsView'), _buildToggle('تعديل حسابات الشركة', 'companyAccountsEdit'), _buildToggle('تعديل سعر الدولار', 'updateCurrency'),
               const Divider(),
               _buildToggle('إضافة زبون', 'customerCreate'), _buildToggle('تعديل زبون', 'customerEdit'), _buildToggle('حذف زبون', 'customerDelete'),
               _buildToggle('إنشاء فاتورة', 'invoiceCreate'), _buildToggle('تعديل فاتورة', 'invoiceEdit'), _buildToggle('حذف فاتورة', 'invoiceDelete'),

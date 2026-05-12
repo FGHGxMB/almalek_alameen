@@ -48,6 +48,8 @@ class FirestoreKeys {
   static const String customerCounter = 'customer_counter';
   static const String permissions = 'permissions';
   static const String accountColor = 'account_color';
+  static const String updateCurrency = 'update_currency';
+  static const String currencyHistory = 'currency_history';
 
   // Product Fields
   static const String itemCode = 'item_code';
@@ -70,6 +72,12 @@ class FirestoreKeys {
   static const String minPrice1 = 'min_price1';
   static const String minPrice2 = 'min_price2';
   static const String minPrice3 = 'min_price3';
+  static const String costPrice1 = 'cost_price1';
+  static const String costPrice2 = 'cost_price2';
+  static const String costPrice3 = 'cost_price3';
+  static const String currency1 = 'currency1';
+  static const String currency2 = 'currency2';
+  static const String currency3 = 'currency3';
 
   // New Product Display Fields (Tabs & Columns)
   static const String tabName = 'tab_name';

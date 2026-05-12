@@ -23,17 +23,21 @@ class SettingsScreen extends StatelessWidget {
     ));
   }
 
-  void _showEditCurrencyDialog(BuildContext context, SettingsCubit cubit, double currentRate) {
+  void _showEditCurrencyDialog(BuildContext context, SettingsCubit cubit, double currentRate, String userName) {
     final controller = TextEditingController(text: currentRate.toString());
     showDialog(context: context, builder: (ctx) => AlertDialog(
       title: const Text('تعديل سعر الدولار'),
       content: TextField(controller: controller, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'سعر الصرف الجديد', border: OutlineInputBorder())),
       actions:[
         TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
-        ElevatedButton(onPressed: () {
-          cubit.updateCurrencyRate(double.tryParse(controller.text) ?? currentRate);
-          Navigator.pop(ctx);
-        }, child: const Text('حفظ السعر')),
+        ElevatedButton(
+            onPressed: () {
+              final newRate = double.tryParse(controller.text) ?? currentRate;
+              cubit.updateCurrencyRate(newRate, userName); // تمرير السعر واسم المستخدم
+              Navigator.pop(ctx);
+            },
+            child: const Text('حفظ السعر')
+        ),
       ],
     ));
   }
@@ -101,21 +105,45 @@ class SettingsScreen extends StatelessWidget {
 
                       // 1. سعر الدولار الحي
                       if (state is SettingsLoaded)
-                        ListTile(
-                          tileColor: Colors.teal.shade50,
-                          leading: const Icon(Icons.attach_money, color: Colors.teal),
-                          title: Row(
+                      // 1. سعر الدولار الحي وسجله (يظهر لمن لديه صلاحية updateCurrency)
+                        PermissionGuard(
+                          permissionCheck: (perms) => perms.updateCurrency,
+                          child: Column(
                             children:[
-                              const Text('سعر الدولار: ', style: TextStyle(fontWeight: FontWeight.bold)),
-                              Text('${state.currencyRate}', style: const TextStyle(color: Colors.teal, fontWeight: FontWeight.bold, fontSize: 18)),
-                              if (!state.isSynced) ...[
-                                const SizedBox(width: 8),
-                                const Icon(Icons.cloud_off, color: Colors.orange, size: 18),
-                              ]
+                              ListTile(
+                                tileColor: Colors.teal.shade50,
+                                leading: const Icon(Icons.attach_money, color: Colors.teal),
+                                title: Row(
+                                  children:[
+                                    const Text('سعر الدولار: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                                    if (state is SettingsLoaded)
+                                      Text('${state.currencyRate}', style: const TextStyle(color: Colors.teal, fontWeight: FontWeight.bold, fontSize: 18)),
+                                    if (state is SettingsLoaded && !state.isConfigSynced) ...[
+                                      const SizedBox(width: 8),
+                                      const Icon(Icons.cloud_off, color: Colors.orange, size: 18),
+                                    ]
+                                  ],
+                                ),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children:[
+                                    IconButton(
+                                      icon: const Icon(Icons.history, color: Colors.blueGrey),
+                                      tooltip: 'سجل التغييرات',
+                                      onPressed: () => context.push(AppRoutes.currencyHistory),
+                                    ),
+                                    const Icon(Icons.edit, size: 20, color: Colors.teal),
+                                  ],
+                                ),
+                                onTap: () {
+                                  if (state is SettingsLoaded) {
+                                    _showEditCurrencyDialog(context, cubit, state.currencyRate, user.accountName); // تمرير اسم المستخدم
+                                  }
+                                },
+                              ),
+                              const SizedBox(height: 8),
                             ],
                           ),
-                          trailing: const Icon(Icons.edit, size: 20, color: Colors.teal),
-                          onTap: () => _showEditCurrencyDialog(context, cubit, state.currencyRate),
                         ),
                       const SizedBox(height: 8),
 
@@ -127,7 +155,7 @@ class SettingsScreen extends StatelessWidget {
                           children:[
                             const Text('المعلومات الأساسية للمؤسسة'),
                             // عرض الغيمة البرتقالية إذا كانت الإعدادات قيد الرفع
-                            if (state is SettingsLoaded && !state.isSynced) ...[
+                            if (state is SettingsLoaded && !state.isConfigSynced) ...[
                               const SizedBox(width: 8),
                               const Icon(Icons.cloud_off, color: Colors.orange, size: 16),
                             ]
@@ -142,7 +170,15 @@ class SettingsScreen extends StatelessWidget {
                       ListTile(
                         tileColor: Colors.teal.shade50,
                         leading: const Icon(Icons.inventory_2_outlined, color: Colors.teal),
-                        title: const Text('إدارة المواد والأسعار'),
+                        title: Row(
+                          children:[
+                            const Text('إدارة المواد والأسعار'),
+                            if (state is SettingsLoaded && !state.isProductsSynced) ...[
+                              const SizedBox(width: 8),
+                              const Icon(Icons.cloud_off, color: Colors.orange, size: 16),
+                            ]
+                          ],
+                        ),
                         trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.teal),
                         onTap: () => context.push(AppRoutes.productsManagement),
                       ),
