@@ -1,6 +1,7 @@
 // lib/ui/screens/transactions/invoice_form_screen.dart
 
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +10,7 @@ import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:spice_app/data/models/user_model.dart';
+import 'package:spice_app/logic/transactions/return_form_cubit.dart';
 import '../../../core/constants/firestore_keys.dart';
 import '../../../logic/auth/auth_cubit.dart';
 import '../../../logic/auth/auth_state.dart';
@@ -22,6 +24,7 @@ import '../../../data/models/product_model.dart';
 import '../../widgets/product_selection_grid.dart';
 import '../../../core/services/printer_service.dart';
 import '../../../data/models/unified_transaction.dart';
+import '../../widgets/print_design_widget.dart';
 
 class InvoiceFormScreen extends StatefulWidget {
   final InvoiceModel? invoiceToEdit;
@@ -36,6 +39,10 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
   CustomerModel? _selectedCustomer;
   bool isViewMode = false;
   final ScreenshotController _screenshotController = ScreenshotController();
+
+  String _savedPrintName = '';
+  String _savedPrintAddress = '';
+  String _savedPrintPhone = '';
 
   String _formatNum(double num) => NumberFormat('#,##0').format(num);
   String _rawNum(double num) => num == num.toInt() ? num.toInt().toString() : num.toString();
@@ -54,6 +61,9 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
     if (isViewMode) {
       _noteController.text = widget.invoiceToEdit!.invoiceNote;
       _discountController.text = widget.invoiceToEdit!.discount.toString();
+      _savedPrintName = widget.invoiceToEdit!.printName;
+      _savedPrintAddress = widget.invoiceToEdit!.printAddress;
+      _savedPrintPhone = widget.invoiceToEdit!.printPhone;
     }
   }
 
@@ -82,32 +92,43 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
     });
   }
 
-  // --- دالة حوار الطباعة والمشاركة ---
-  void _showPrintShareDialog(BuildContext context, InvoiceFormReady state, bool isShare, UserModel currentUser) {
-    // 1. محاولة إيجاد الزبون لتوليد بياناته
+  void _showPrintShareDialog(BuildContext context, InvoiceFormReady state, bool isShare, UserModel currentUser) async {
     CustomerModel? c;
     try { c = state.myCustomers.firstWhere((cust) => cust.id == widget.invoiceToEdit!.customerId); } catch(e){}
 
-    // 2. توليد العنوان الافتراضي (منطقة - حي - شارع)
-    String defaultAddress = widget.invoiceToEdit!.printAddress;
+    String defaultName = _savedPrintName;
+    if (defaultName.isEmpty && c != null) {
+      defaultName = c.customerName;
+      if (currentUser.customerSuffix.isNotEmpty && defaultName.startsWith(currentUser.customerSuffix)) defaultName = defaultName.replaceFirst(currentUser.customerSuffix, '').trim();
+      if (defaultName.endsWith(' - ${c.region}')) defaultName = defaultName.substring(0, defaultName.length - (' - ${c.region}').length).trim();
+    } else if (defaultName.isEmpty) defaultName = widget.invoiceToEdit!.customerName;
+
+    String defaultAddress = _savedPrintAddress;
     if (defaultAddress.isEmpty && c != null) {
-      List<String> addressParts =[];
-      if (c.region.isNotEmpty) addressParts.add(c.region);
-      if (c.district.isNotEmpty) addressParts.add(c.district);
-      if (c.street.isNotEmpty) addressParts.add(c.street);
-      defaultAddress = addressParts.join(' - ');
+      List<String> parts =[];
+      if (c.region.isNotEmpty) parts.add(c.region);
+      if (c.district.isNotEmpty) parts.add(c.district);
+      if (c.street.isNotEmpty) parts.add(c.street);
+      defaultAddress = parts.join(' - ');
     }
 
-    // 3. توليد الهاتف الافتراضي
-    String defaultPhone = widget.invoiceToEdit!.printPhone;
+    String defaultPhone = _savedPrintPhone;
     if (defaultPhone.isEmpty && c != null) {
       defaultPhone = c.phone1.isNotEmpty ? c.phone1 : c.phone2;
     }
 
-    final nameCtrl = TextEditingController(text: widget.invoiceToEdit?.customerName ?? '');
+    final nameCtrl = TextEditingController(text: defaultName);
     final addressCtrl = TextEditingController(text: defaultAddress);
     final phoneCtrl = TextEditingController(text: defaultPhone);
     final delegateCtrl = TextEditingController(text: currentUser.accountName);
+
+    String companyInfo = '';
+    try {
+      final doc = await FirebaseFirestore.instance.collection('settings').doc('app_config').get(const GetOptions(source: Source.cache));
+      companyInfo = doc.data()?['print_message'] ?? '';
+    } catch(e){}
+
+    if (!context.mounted) return;
 
     showDialog(context: context, builder: (ctx) {
       return AlertDialog(
@@ -116,8 +137,8 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children:[
-              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'اسم الزبون', border: OutlineInputBorder(), isDense: true)), const SizedBox(height: 8),
-              TextField(controller: addressCtrl, decoration: const InputDecoration(labelText: 'العنوان (للطباعة)', border: OutlineInputBorder(), isDense: true)), const SizedBox(height: 8),
+              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'اسم الزبون (للطباعة)', border: OutlineInputBorder(), isDense: true)), const SizedBox(height: 8),
+              TextField(controller: addressCtrl, decoration: const InputDecoration(labelText: 'العنوان', border: OutlineInputBorder(), isDense: true)), const SizedBox(height: 8),
               TextField(controller: phoneCtrl, decoration: const InputDecoration(labelText: 'رقم الهاتف', border: OutlineInputBorder(), isDense: true)), const SizedBox(height: 8),
               TextField(controller: delegateCtrl, decoration: const InputDecoration(labelText: 'المندوب', border: OutlineInputBorder(), isDense: true)),
             ],
@@ -129,41 +150,61 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
             onPressed: () async {
               Navigator.pop(ctx);
+              context.read<TransactionsRepository>().savePrintData('invoices', widget.invoiceToEdit!.id, nameCtrl.text.trim(), addressCtrl.text.trim(), phoneCtrl.text.trim());
+              setState(() { _savedPrintName = nameCtrl.text.trim(); _savedPrintAddress = addressCtrl.text.trim(); _savedPrintPhone = phoneCtrl.text.trim(); });
 
-              // حفظ بيانات الطباعة في السيرفر للمرات القادمة
-              context.read<TransactionsRepository>().savePrintData(
-                  FirestoreKeys.invoices, widget.invoiceToEdit!.id, addressCtrl.text.trim(), phoneCtrl.text.trim()
-              );
+              List<String> pNames = state.items.map((i) => state.products.firstWhere((p) => p.id == i.productId).itemName).toList();
 
-              if (isShare) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('جاري تجهيز الصورة...')));
-                final widgetToCapture = Theme(
+              // الحل الجذري لمنع الصورة الرمادية (MediaQuery و Material)
+              final widgetToCapture = MediaQuery(
+                data: const MediaQueryData(),
+                child: Theme(
                   data: ThemeData.light(),
                   child: Directionality(
                     textDirection: TextDirection.rtl,
-                    child: Container(
+                    child: Material(
                       color: Colors.white,
-                      child: _buildReceiptWidgetForImage(state, nameCtrl.text, addressCtrl.text, phoneCtrl.text, delegateCtrl.text),
+                      child: PrintDesignWidget(
+                        type: TransactionType.invoice,
+                        docNumber: widget.invoiceToEdit!.delegateInvoiceNumber.toString().padLeft(5, '0'),
+                        date: widget.invoiceToEdit!.invoiceDate,
+                        delegateName: delegateCtrl.text,
+                        customerName: nameCtrl.text,
+                        customerAddress: addressCtrl.text,
+                        customerPhone: phoneCtrl.text,
+                        companyInfoText: companyInfo,
+                        items: state.items,
+                        productNames: pNames,
+                        totalAmount: state.total,
+                        discount: state.discount,
+                      ),
                     ),
                   ),
+                ),
+              );
+
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('جاري المعالجة...')));
+
+              try {
+                // استخراج الصورة أولاً (يستخدم للمشاركة وللطباعة)
+                final bytes = await _screenshotController.captureFromWidget(
+                  widgetToCapture,
+                  delay: const Duration(milliseconds: 500),
+                  context: context, // تمرير السياق يمنع الأخطاء البصرية
                 );
-                try {
-                  final bytes = await _screenshotController.captureFromWidget(widgetToCapture, delay: const Duration(milliseconds: 500));
+
+                if (isShare) {
                   final directory = await getApplicationDocumentsDirectory();
-                  final imagePath = '${directory.path}/invoice_${widget.invoiceToEdit?.delegateInvoiceNumber ?? 'new'}.png';
+                  final imagePath = '${directory.path}/invoice_${widget.invoiceToEdit!.delegateInvoiceNumber}.png';
                   File(imagePath).writeAsBytesSync(bytes);
                   await Share.shareXFiles([XFile(imagePath)], text: 'مرفق صورة الفاتورة');
-                } catch(e) {}
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('جاري الاتصال بالطابعة...')));
-                final t = UnifiedTransaction(
-                    id: widget.invoiceToEdit!.id, type: TransactionType.invoice, date: widget.invoiceToEdit!.invoiceDate, updatedAt: widget.invoiceToEdit!.updatedAt,
-                    localNumber: widget.invoiceToEdit!.delegateInvoiceNumber, globalNumber: widget.invoiceToEdit!.invoiceNumber,
-                    customerId: widget.invoiceToEdit!.customerId, // <--- السطر المضاف
-                    customerName: nameCtrl.text, amount: state.total + state.discount, isSynced: true, delegateId: currentUser.id,
-                    delegateName: delegateCtrl.text, delegateColor: '#000000', delegateSuffix: '', paymentMethod: state.paymentMethod, showModifiedDate: false, originalDoc: widget.invoiceToEdit!
-                );
-                PrinterService().printTransaction(t);
+                } else {
+                  // إرسال بايتات الصورة إلى طابعة البلوتوث
+                  await PrinterService().printImage(bytes);
+                  if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إرسال الصورة للطابعة بنجاح!'), backgroundColor: Colors.green));
+                }
+              } catch(e) {
+                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
               }
             },
             child: Text(isShare ? 'مشاركة' : 'طباعة', style: const TextStyle(color: Colors.white)),
@@ -205,14 +246,24 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
     );
   }
 
+  // --- دالة نافذة تعديل القلم (مخصصة للفاتورة) ---
   void _showEditItemDialog(BuildContext context, InvoiceFormCubit cubit, int index, var item, List<ProductModel> products, double currencyRate) {
-    if (item.isGift) return; // الهدية لا تعدل أسعارها
+    if (item.isGift) return;
 
     final product = products.firstWhere((p) => p.id == item.productId);
     double qty = item.quantity;
     String u = item.unit;
     double price = item.price;
-    double minPrice = item.minPrice;
+
+    double _calcPrice(double basePrice, String currency) {
+      return currency == 'USD' ? basePrice * currencyRate : basePrice;
+    }
+
+    // استخدمنا متغيراً جديداً لتجنب تضارب الأسماء
+    double currentMinPrice = 0.0;
+    if (u == product.unit1) currentMinPrice = _calcPrice(product.minPrice1, product.currency1);
+    else if (u == product.unit2) currentMinPrice = _calcPrice(product.minPrice2, product.currency2);
+    else if (u == product.unit3) currentMinPrice = _calcPrice(product.minPrice3, product.currency3);
 
     final qtyCtrl = TextEditingController(text: _rawNum(qty));
     final priceCtrl = TextEditingController(text: _rawNum(price));
@@ -224,7 +275,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
       context: context,
       builder: (ctx) {
         return StatefulBuilder(builder: (context, setState) {
-          bool isPriceLocked = (price == minPrice && minPrice > 0);
+          bool isPriceLocked = (price == currentMinPrice && currentMinPrice > 0);
 
           return AlertDialog(
             title: Text('تعديل ${product.itemName}', style: const TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold)),
@@ -263,11 +314,12 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                       if (v != null) {
                         setState(() {
                           u = v;
-                          if (v == product.unit1) { price = product.shopPrice1 * currencyRate; minPrice = product.minPrice1 * currencyRate; }
-                          if (v == product.unit2) { price = product.shopPrice2 * currencyRate; minPrice = product.minPrice2 * currencyRate; }
-                          if (v == product.unit3) { price = product.shopPrice3 * currencyRate; minPrice = product.minPrice3 * currencyRate; }
+                          if (v == product.unit1) { price = _calcPrice(product.shopPrice1, product.currency1); currentMinPrice = _calcPrice(product.minPrice1, product.currency1); }
+                          if (v == product.unit2) { price = _calcPrice(product.shopPrice2, product.currency2); currentMinPrice = _calcPrice(product.minPrice2, product.currency2); }
+                          if (v == product.unit3) { price = _calcPrice(product.shopPrice3, product.currency3); currentMinPrice = _calcPrice(product.minPrice3, product.currency3); }
+
                           priceCtrl.text = _rawNum(price);
-                          isPriceLocked = (price == minPrice && minPrice > 0);
+                          isPriceLocked = (price == currentMinPrice && currentMinPrice > 0);
                           priceError = null;
                         });
                       }
@@ -291,8 +343,8 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                         price = double.tryParse(v) ?? 0;
                         if (price <= 0) {
                           priceError = 'لا يمكن أن يكون صفراً أو سالباً';
-                        } else if (minPrice > 0 && price < minPrice) {
-                          priceError = 'لا يمكن النزول تحت الأدنى: ${_formatNum(minPrice)}';
+                        } else if (currentMinPrice > 0 && price < currentMinPrice) {
+                          priceError = 'لا يمكن النزول تحت الأدنى: ${_formatNum(currentMinPrice)}';
                         } else {
                           priceError = null;
                         }
@@ -300,8 +352,8 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                     },
                   ),
                   const SizedBox(height: 6),
-                  if (minPrice > 0)
-                    Text('السعر الأدنى: ${_formatNum(minPrice)}', style: TextStyle(color: Colors.grey.shade700, fontSize: 12, fontWeight: FontWeight.bold)),
+                  if (currentMinPrice > 0)
+                    Text('السعر الأدنى للوحدة: ${_formatNum(currentMinPrice)}', style: TextStyle(color: Colors.grey.shade700, fontSize: 12, fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
@@ -313,7 +365,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                     qtyError = qty <= 0 ? 'لا يمكن أن تكون صفراً أو سالبة' : null;
                     if (price <= 0) {
                       priceError = 'لا يمكن أن يكون صفراً أو سالباً';
-                    } else if (minPrice > 0 && price < minPrice) {
+                    } else if (currentMinPrice > 0 && price < currentMinPrice) {
                       priceError = 'لا يمكن النزول تحت السعر الأدنى';
                     } else {
                       priceError = null;

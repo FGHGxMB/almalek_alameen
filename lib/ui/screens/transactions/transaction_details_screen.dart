@@ -17,15 +17,10 @@ class TransactionDetailsScreen extends StatelessWidget {
 
   const TransactionDetailsScreen({Key? key, required this.transaction}) : super(key: key);
 
-  void _printDoc(BuildContext context) async {
-    final printer = PrinterService();
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('جاري الاتصال بالطابعة...')));
-    try {
-      await printer.printTransaction(transaction);
-      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تمت الطباعة بنجاح!'), backgroundColor: Colors.green));
-    } catch (e) {
-      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: Colors.red));
-    }
+  void _printDoc(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('يرجى الطباعة والمشاركة من داخل الفاتورة المدمجة باستخدام الثلاث نقاط بالأعلى.')),
+    );
   }
 
   // تنسيق الأرقام بدون فواصل عشرية مع فواصل الآلاف

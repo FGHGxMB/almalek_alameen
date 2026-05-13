@@ -212,8 +212,9 @@ class TransactionsRepository {
     } catch (e) { return 1.0; }
   }
 
-  Future<void> savePrintData(String collectionName, String docId, String address, String phone) async {
+  Future<void> savePrintData(String collectionName, String docId, String name, String address, String phone) async {
     await _firestore.collection(collectionName).doc(docId).update({
+      'print_name': name,
       'print_address': address,
       'print_phone': phone,
     });

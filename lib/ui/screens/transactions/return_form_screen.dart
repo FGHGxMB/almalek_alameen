@@ -1,6 +1,7 @@
 // lib/ui/screens/transactions/return_form_screen.dart
 
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -22,6 +23,7 @@ import '../../../data/models/product_model.dart';
 import '../../widgets/product_selection_grid.dart';
 import '../../../core/services/printer_service.dart';
 import '../../../data/models/unified_transaction.dart';
+import '../../widgets/print_design_widget.dart';
 
 class ReturnFormScreen extends StatefulWidget {
   final ReturnModel? returnToEdit;
@@ -35,6 +37,10 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
   CustomerModel? _selectedCustomer;
   bool isViewMode = false;
   final ScreenshotController _screenshotController = ScreenshotController();
+
+  String _savedPrintName = '';
+  String _savedPrintAddress = '';
+  String _savedPrintPhone = '';
 
   String _formatNum(double num) => NumberFormat('#,##0').format(num);
   String _rawNum(double num) => num == num.toInt() ? num.toInt().toString() : num.toString();
@@ -52,6 +58,9 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
     isViewMode = widget.returnToEdit != null;
     if (isViewMode) {
       _noteController.text = widget.returnToEdit!.returnNote;
+      _savedPrintName = widget.returnToEdit!.printName;
+      _savedPrintAddress = widget.returnToEdit!.printAddress;
+      _savedPrintPhone = widget.returnToEdit!.printPhone;
     }
   }
 
@@ -79,13 +88,25 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
     });
   }
 
-  // --- دالة حوار الطباعة والمشاركة ---
   // --- دالة حوار الطباعة والمشاركة (للمرتجعات) ---
-  void _showPrintShareDialog(BuildContext context, ReturnFormReady state, bool isShare, UserModel currentUser) {
+  void _showPrintShareDialog(BuildContext context, ReturnFormReady state, bool isShare, UserModel currentUser) async {
     CustomerModel? c;
     try { c = state.myCustomers.firstWhere((cust) => cust.id == widget.returnToEdit!.customerId); } catch(e){}
 
-    String defaultAddress = widget.returnToEdit!.printAddress;
+    String defaultName = _savedPrintName;
+    if (defaultName.isEmpty && c != null) {
+      defaultName = c.customerName;
+      if (currentUser.customerSuffix.isNotEmpty && defaultName.startsWith(currentUser.customerSuffix)) {
+        defaultName = defaultName.replaceFirst(currentUser.customerSuffix, '').trim();
+      }
+      if (defaultName.endsWith(' - ${c.region}')) {
+        defaultName = defaultName.substring(0, defaultName.length - (' - ${c.region}').length).trim();
+      }
+    } else if (defaultName.isEmpty) {
+      defaultName = widget.returnToEdit!.customerName;
+    }
+
+    String defaultAddress = _savedPrintAddress;
     if (defaultAddress.isEmpty && c != null) {
       List<String> addressParts =[];
       if (c.region.isNotEmpty) addressParts.add(c.region);
@@ -94,15 +115,23 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
       defaultAddress = addressParts.join(' - ');
     }
 
-    String defaultPhone = widget.returnToEdit!.printPhone;
+    String defaultPhone = _savedPrintPhone;
     if (defaultPhone.isEmpty && c != null) {
       defaultPhone = c.phone1.isNotEmpty ? c.phone1 : c.phone2;
     }
 
-    final nameCtrl = TextEditingController(text: widget.returnToEdit?.customerName ?? '');
+    final nameCtrl = TextEditingController(text: defaultName);
     final addressCtrl = TextEditingController(text: defaultAddress);
     final phoneCtrl = TextEditingController(text: defaultPhone);
     final delegateCtrl = TextEditingController(text: currentUser.accountName);
+
+    String companyInfo = '';
+    try {
+      final doc = await FirebaseFirestore.instance.collection('settings').doc('app_config').get(const GetOptions(source: Source.cache));
+      companyInfo = doc.data()?['print_message'] ?? '';
+    } catch(e){}
+
+    if (!context.mounted) return;
 
     showDialog(context: context, builder: (ctx) {
       return AlertDialog(
@@ -111,8 +140,8 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children:[
-              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'اسم الزبون', border: OutlineInputBorder(), isDense: true)), const SizedBox(height: 8),
-              TextField(controller: addressCtrl, decoration: const InputDecoration(labelText: 'العنوان (للطباعة)', border: OutlineInputBorder(), isDense: true)), const SizedBox(height: 8),
+              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'اسم الزبون (للطباعة)', border: OutlineInputBorder(), isDense: true)), const SizedBox(height: 8),
+              TextField(controller: addressCtrl, decoration: const InputDecoration(labelText: 'العنوان', border: OutlineInputBorder(), isDense: true)), const SizedBox(height: 8),
               TextField(controller: phoneCtrl, decoration: const InputDecoration(labelText: 'رقم الهاتف', border: OutlineInputBorder(), isDense: true)), const SizedBox(height: 8),
               TextField(controller: delegateCtrl, decoration: const InputDecoration(labelText: 'المندوب', border: OutlineInputBorder(), isDense: true)),
             ],
@@ -121,41 +150,56 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
         actions:[
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade600),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade700),
             onPressed: () async {
               Navigator.pop(ctx);
 
-              // حفظ بيانات الطباعة في السيرفر
-              context.read<TransactionsRepository>().savePrintData(
-                  FirestoreKeys.returns, widget.returnToEdit!.id, addressCtrl.text.trim(), phoneCtrl.text.trim()
-              );
+              context.read<TransactionsRepository>().savePrintData(FirestoreKeys.returns, widget.returnToEdit!.id, nameCtrl.text.trim(), addressCtrl.text.trim(), phoneCtrl.text.trim());
+              setState(() { _savedPrintName = nameCtrl.text.trim(); _savedPrintAddress = addressCtrl.text.trim(); _savedPrintPhone = phoneCtrl.text.trim(); });
 
-              if (isShare) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('جاري تجهيز الصورة...')));
-                final widgetToCapture = Theme(
+              List<String> pNames = state.items.map((i) => state.products.firstWhere((p) => p.id == i.productId).itemName).toList();
+
+              final widgetToCapture = MediaQuery(
+                data: const MediaQueryData(),
+                child: Theme(
                   data: ThemeData.light(),
                   child: Directionality(
                     textDirection: TextDirection.rtl,
-                    child: Container(color: Colors.white, child: _buildReceiptWidgetForImage(state, nameCtrl.text, addressCtrl.text, phoneCtrl.text, delegateCtrl.text)),
+                    child: Material(
+                      color: Colors.white,
+                      child: PrintDesignWidget(
+                        type: TransactionType.returnDoc,
+                        docNumber: widget.returnToEdit!.delegateReturnNumber.toString().padLeft(5, '0'),
+                        date: widget.returnToEdit!.returnDate,
+                        delegateName: delegateCtrl.text,
+                        customerName: nameCtrl.text,
+                        customerAddress: addressCtrl.text,
+                        customerPhone: phoneCtrl.text,
+                        companyInfoText: companyInfo,
+                        items: state.items,
+                        productNames: pNames,
+                        totalAmount: state.total,
+                      ),
+                    ),
                   ),
-                );
-                try {
-                  final bytes = await _screenshotController.captureFromWidget(widgetToCapture, delay: const Duration(milliseconds: 300));
+                ),
+              );
+
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('جاري المعالجة...')));
+
+              try {
+                final bytes = await _screenshotController.captureFromWidget(widgetToCapture, delay: const Duration(milliseconds: 500), context: context);
+                if (isShare) {
                   final directory = await getApplicationDocumentsDirectory();
                   final imagePath = '${directory.path}/return_${widget.returnToEdit?.delegateReturnNumber ?? 'new'}.png';
                   File(imagePath).writeAsBytesSync(bytes);
                   await Share.shareXFiles([XFile(imagePath)], text: 'مرفق صورة المرتجع');
-                } catch(e) {}
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('جاري الاتصال بالطابعة...')));
-                final t = UnifiedTransaction(
-                    id: widget.returnToEdit!.id, type: TransactionType.returnDoc, date: widget.returnToEdit!.returnDate, updatedAt: widget.returnToEdit!.updatedAt,
-                    localNumber: widget.returnToEdit!.delegateReturnNumber, globalNumber: widget.returnToEdit!.returnNumber,
-                    customerId: widget.returnToEdit!.customerId, // <--- السطر المضاف
-                    customerName: nameCtrl.text, amount: state.total, isSynced: true, delegateId: currentUser.id,
-                    delegateName: delegateCtrl.text, delegateColor: '#000000', delegateSuffix: '', paymentMethod: state.paymentMethod, showModifiedDate: false, originalDoc: widget.returnToEdit!
-                );
-                PrinterService().printTransaction(t);
+                } else {
+                  await PrinterService().printImage(bytes);
+                  if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إرسال أمر الطباعة بنجاح!'), backgroundColor: Colors.green));
+                }
+              } catch(e) {
+                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
               }
             },
             child: Text(isShare ? 'مشاركة' : 'طباعة', style: const TextStyle(color: Colors.white)),
@@ -196,6 +240,7 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
     );
   }
 
+  // --- دالة نافذة تعديل القلم (مخصصة للمرتجع) ---
   void _showEditItemDialog(BuildContext context, ReturnFormCubit cubit, int index, var item, List<ProductModel> products, double currencyRate) {
     if (item.isGift) return;
 
@@ -203,6 +248,15 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
     double qty = item.quantity;
     String u = item.unit;
     double price = item.price;
+
+    double _calcPrice(double basePrice, String currency) {
+      return currency == 'USD' ? basePrice * currencyRate : basePrice;
+    }
+
+    double currentMinPrice = 0.0;
+    if (u == product.unit1) currentMinPrice = _calcPrice(product.minPrice1, product.currency1);
+    else if (u == product.unit2) currentMinPrice = _calcPrice(product.minPrice2, product.currency2);
+    else if (u == product.unit3) currentMinPrice = _calcPrice(product.minPrice3, product.currency3);
 
     final qtyCtrl = TextEditingController(text: _rawNum(qty));
     final priceCtrl = TextEditingController(text: _rawNum(price));
@@ -251,9 +305,10 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
                       if (v != null) {
                         setState(() {
                           u = v;
-                          if (v == product.unit1) { price = product.shopPrice1 * currencyRate; }
-                          if (v == product.unit2) { price = product.shopPrice2 * currencyRate; }
-                          if (v == product.unit3) { price = product.shopPrice3 * currencyRate; }
+                          if (v == product.unit1) { price = _calcPrice(product.shopPrice1, product.currency1); currentMinPrice = _calcPrice(product.minPrice1, product.currency1); }
+                          if (v == product.unit2) { price = _calcPrice(product.shopPrice2, product.currency2); currentMinPrice = _calcPrice(product.minPrice2, product.currency2); }
+                          if (v == product.unit3) { price = _calcPrice(product.shopPrice3, product.currency3); currentMinPrice = _calcPrice(product.minPrice3, product.currency3); }
+
                           priceCtrl.text = _rawNum(price);
                           priceError = null;
                         });
@@ -277,6 +332,9 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
                       });
                     },
                   ),
+                  const SizedBox(height: 6),
+                  if (currentMinPrice > 0)
+                    Text('السعر الأدنى كمرجع: ${_formatNum(currentMinPrice)}', style: TextStyle(color: Colors.grey.shade700, fontSize: 12, fontWeight: FontWeight.bold)),
                 ],
               ),
             ),

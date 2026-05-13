@@ -24,6 +24,7 @@ class ReturnModel {
   final List<TransactionItemModel> items;
   final String printAddress;
   final String printPhone;
+  final String printName;
 
   ReturnModel({
     required this.id, required this.returnNumber, required this.delegateReturnNumber,
@@ -34,6 +35,7 @@ class ReturnModel {
     required this.delegateId, required this.items,
     this.printAddress = '',
     this.printPhone = '',
+    this.printName = '',
   });
 
   factory ReturnModel.fromFirestore(DocumentSnapshot doc) {
@@ -61,6 +63,7 @@ class ReturnModel {
           .toList() ??[],
       printAddress: data['print_address'] ?? '',
       printPhone: data['print_phone'] ?? '',
+      printName: data['print_name'] ?? '',
     );
   }
 
@@ -84,6 +87,7 @@ class ReturnModel {
       FirestoreKeys.items: items.map((e) => e.toMap()).toList(),
       'print_address': printAddress,
       'print_phone': printPhone,
+      'print_name': printName,
     };
   }
 
@@ -93,6 +97,7 @@ class ReturnModel {
     String? returnNote, String? invoiceRef, String? costCenterCode, bool? isSynced,
     String? pendingAction, DateTime? createdAt, DateTime? updatedAt,
     String? delegateId, List<TransactionItemModel>? items,
+    String? printName,
   }) {
     return ReturnModel(
       id: id ?? this.id, returnNumber: returnNumber ?? this.returnNumber, delegateReturnNumber: delegateReturnNumber ?? this.delegateReturnNumber,
@@ -101,6 +106,7 @@ class ReturnModel {
       invoiceRef: invoiceRef ?? this.invoiceRef, costCenterCode: costCenterCode ?? this.costCenterCode, isSynced: isSynced ?? this.isSynced,
       pendingAction: pendingAction ?? this.pendingAction, createdAt: createdAt ?? this.createdAt, updatedAt: updatedAt ?? this.updatedAt,
       delegateId: delegateId ?? this.delegateId, items: items ?? this.items,
+      printName: printName ?? this.printName,
     );
   }
 }

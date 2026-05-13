@@ -1,6 +1,7 @@
 // lib/ui/screens/transactions/receipt_form_screen.dart
 
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -19,6 +20,7 @@ import '../../../data/models/customer_model.dart';
 import '../../../data/models/receipt_model.dart';
 import '../../../core/services/printer_service.dart';
 import '../../../data/models/unified_transaction.dart';
+import '../../widgets/print_design_widget.dart';
 
 class ReceiptFormScreen extends StatefulWidget {
   final ReceiptModel? receiptToEdit;
@@ -35,6 +37,10 @@ class _ReceiptFormScreenState extends State<ReceiptFormScreen> {
   CustomerModel? _selectedCustomer;
   bool isViewMode = false;
   final ScreenshotController _screenshotController = ScreenshotController();
+
+  String _savedPrintName = '';
+  String _savedPrintAddress = '';
+  String _savedPrintPhone = '';
 
   String _formatNum(double num) => NumberFormat('#,##0').format(num);
   String _rawNum(double num) => num == num.toInt() ? num.toInt().toString() : num.toString();
@@ -53,6 +59,9 @@ class _ReceiptFormScreenState extends State<ReceiptFormScreen> {
     if (isViewMode) {
       _amountController.text = _rawNum(widget.receiptToEdit!.amount);
       _noteController.text = widget.receiptToEdit!.lineNote;
+      _savedPrintName = widget.receiptToEdit!.printName;
+      _savedPrintAddress = widget.receiptToEdit!.printAddress;
+      _savedPrintPhone = widget.receiptToEdit!.printPhone;
     }
   }
 
@@ -88,13 +97,20 @@ class _ReceiptFormScreenState extends State<ReceiptFormScreen> {
   }
 
   // --- دالة حوار الطباعة والمشاركة (للسندات) ---
-  void _showPrintShareDialog(BuildContext context, bool isShare, UserModel currentUser, List<CustomerModel> customers) {
+  void _showPrintShareDialog(BuildContext context, bool isShare, UserModel currentUser, List<CustomerModel> customers) async {
     CustomerModel? c;
     if (widget.receiptToEdit != null) {
       try { c = customers.firstWhere((cust) => cust.id == widget.receiptToEdit!.creditorAccount); } catch(e){}
     }
 
-    String defaultAddress = widget.receiptToEdit?.printAddress ?? '';
+    String defaultName = _savedPrintName;
+    if (defaultName.isEmpty && c != null) {
+      defaultName = c.customerName;
+      if (currentUser.customerSuffix.isNotEmpty && defaultName.startsWith(currentUser.customerSuffix)) defaultName = defaultName.replaceFirst(currentUser.customerSuffix, '').trim();
+      if (defaultName.endsWith(' - ${c.region}')) defaultName = defaultName.substring(0, defaultName.length - (' - ${c.region}').length).trim();
+    }
+
+    String defaultAddress = _savedPrintAddress;
     if (defaultAddress.isEmpty && c != null) {
       List<String> addressParts =[];
       if (c.region.isNotEmpty) addressParts.add(c.region);
@@ -103,15 +119,23 @@ class _ReceiptFormScreenState extends State<ReceiptFormScreen> {
       defaultAddress = addressParts.join(' - ');
     }
 
-    String defaultPhone = widget.receiptToEdit?.printPhone ?? '';
+    String defaultPhone = _savedPrintPhone;
     if (defaultPhone.isEmpty && c != null) {
       defaultPhone = c.phone1.isNotEmpty ? c.phone1 : c.phone2;
     }
 
-    final nameCtrl = TextEditingController(text: c?.customerName ?? '');
+    final nameCtrl = TextEditingController(text: defaultName);
     final addressCtrl = TextEditingController(text: defaultAddress);
     final phoneCtrl = TextEditingController(text: defaultPhone);
     final delegateCtrl = TextEditingController(text: currentUser.accountName);
+
+    String companyInfo = '';
+    try {
+      final doc = await FirebaseFirestore.instance.collection('settings').doc('app_config').get(const GetOptions(source: Source.cache));
+      companyInfo = doc.data()?['print_message'] ?? '';
+    } catch(e){}
+
+    if (!context.mounted) return;
 
     showDialog(context: context, builder: (ctx) {
       return AlertDialog(
@@ -120,8 +144,8 @@ class _ReceiptFormScreenState extends State<ReceiptFormScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children:[
-              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'اسم الزبون', border: OutlineInputBorder(), isDense: true)), const SizedBox(height: 8),
-              TextField(controller: addressCtrl, decoration: const InputDecoration(labelText: 'العنوان (للطباعة)', border: OutlineInputBorder(), isDense: true)), const SizedBox(height: 8),
+              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'اسم الزبون (للطباعة)', border: OutlineInputBorder(), isDense: true)), const SizedBox(height: 8),
+              TextField(controller: addressCtrl, decoration: const InputDecoration(labelText: 'العنوان', border: OutlineInputBorder(), isDense: true)), const SizedBox(height: 8),
               TextField(controller: phoneCtrl, decoration: const InputDecoration(labelText: 'رقم الهاتف', border: OutlineInputBorder(), isDense: true)), const SizedBox(height: 8),
               TextField(controller: delegateCtrl, decoration: const InputDecoration(labelText: 'المندوب المستلم', border: OutlineInputBorder(), isDense: true)),
             ],
@@ -135,37 +159,51 @@ class _ReceiptFormScreenState extends State<ReceiptFormScreen> {
               Navigator.pop(ctx);
 
               if (widget.receiptToEdit != null) {
-                context.read<TransactionsRepository>().savePrintData(
-                    FirestoreKeys.receipts, widget.receiptToEdit!.id, addressCtrl.text.trim(), phoneCtrl.text.trim()
-                );
+                context.read<TransactionsRepository>().savePrintData(FirestoreKeys.receipts, widget.receiptToEdit!.id, nameCtrl.text.trim(), addressCtrl.text.trim(), phoneCtrl.text.trim());
+                setState(() { _savedPrintName = nameCtrl.text.trim(); _savedPrintAddress = addressCtrl.text.trim(); _savedPrintPhone = phoneCtrl.text.trim(); });
               }
 
-              if (isShare) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('جاري تجهيز الصورة...')));
-                final widgetToCapture = Theme(
+              final widgetToCapture = MediaQuery(
+                data: const MediaQueryData(),
+                child: Theme(
                   data: ThemeData.light(),
                   child: Directionality(
                     textDirection: TextDirection.rtl,
-                    child: Container(color: Colors.white, child: _buildReceiptWidgetForImage(nameCtrl.text, addressCtrl.text, phoneCtrl.text, delegateCtrl.text)),
+                    child: Material(
+                      color: Colors.white,
+                      child: PrintDesignWidget(
+                        type: TransactionType.receipt,
+                        docNumber: widget.receiptToEdit!.delegateReceiptNumber.toString().padLeft(5, '0'),
+                        date: widget.receiptToEdit!.date,
+                        delegateName: delegateCtrl.text,
+                        customerName: nameCtrl.text,
+                        customerAddress: addressCtrl.text,
+                        customerPhone: phoneCtrl.text,
+                        companyInfoText: companyInfo,
+                        items: const [],
+                        productNames: const[],
+                        totalAmount: widget.receiptToEdit!.amount,
+                      ),
+                    ),
                   ),
-                );
-                try {
-                  final bytes = await _screenshotController.captureFromWidget(widgetToCapture, delay: const Duration(milliseconds: 300));
+                ),
+              );
+
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('جاري المعالجة...')));
+
+              try {
+                final bytes = await _screenshotController.captureFromWidget(widgetToCapture, delay: const Duration(milliseconds: 500), context: context);
+                if (isShare) {
                   final directory = await getApplicationDocumentsDirectory();
                   final imagePath = '${directory.path}/receipt_${widget.receiptToEdit?.delegateReceiptNumber ?? 'new'}.png';
                   File(imagePath).writeAsBytesSync(bytes);
                   await Share.shareXFiles([XFile(imagePath)], text: 'مرفق صورة السند');
-                } catch(e) {}
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('جاري الاتصال بالطابعة...')));
-                final t = UnifiedTransaction(
-                    id: widget.receiptToEdit!.id, type: TransactionType.receipt, date: widget.receiptToEdit!.date, updatedAt: widget.receiptToEdit!.updatedAt,
-                    localNumber: widget.receiptToEdit!.delegateReceiptNumber, globalNumber: widget.receiptToEdit!.receiptNumber,
-                    customerId: widget.receiptToEdit!.creditorAccount, // <--- السطر المضاف (في السند اسمه creditorAccount)
-                    customerName: nameCtrl.text, amount: widget.receiptToEdit!.amount, isSynced: true, delegateId: widget.receiptToEdit!.delegateId,
-                    delegateName: delegateCtrl.text, delegateColor: '#000000', delegateSuffix: '', paymentMethod: 'cash', showModifiedDate: false, originalDoc: widget.receiptToEdit!
-                );
-                PrinterService().printTransaction(t);
+                } else {
+                  await PrinterService().printImage(bytes);
+                  if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إرسال أمر الطباعة بنجاح!'), backgroundColor: Colors.green));
+                }
+              } catch(e) {
+                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
               }
             },
             child: Text(isShare ? 'مشاركة' : 'طباعة', style: const TextStyle(color: Colors.white)),
@@ -239,8 +277,8 @@ class _ReceiptFormScreenState extends State<ReceiptFormScreen> {
                       onSelected: (val) {
                         if (val == 'edit') setState(() => isViewMode = false);
                         if (val == 'delete') _showDeleteDialog(context, context.read<ReceiptFormCubit>());
-                        if (val == 'print') _showPrintShareDialog(context, false, currentUser.accountName as UserModel, state.customers);
-                        if (val == 'share') _showPrintShareDialog(context, true, currentUser.accountName as UserModel, state.customers);
+                        if (val == 'print') _showPrintShareDialog(context, false, currentUser, state.customers);
+                        if (val == 'share') _showPrintShareDialog(context, true, currentUser, state.customers);
                       },
                       itemBuilder: (ctx) =>[
                         const PopupMenuItem(value: 'print', child: Row(children:[Icon(Icons.print), SizedBox(width: 8), Text('طباعة حرارية')])),

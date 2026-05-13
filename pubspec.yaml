@@ -34,12 +34,11 @@ dependencies:
   excel: ^3.0.0
   share_plus: ^7.2.1
   screenshot: ^3.0.0
+  blue_thermal_printer: ^1.2.3
   uuid: ^4.2.2
 
   # UI Helpers
   google_fonts: ^6.1.0
-
-  esc_pos_utils: ^1.1.0
 
 dev_dependencies:
   flutter_test:
@@ -51,6 +50,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/print_logo.png
 
 flutter_icons:
   android: true

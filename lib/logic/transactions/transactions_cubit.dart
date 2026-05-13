@@ -63,18 +63,19 @@ class TransactionFilters {
 
 class TransactionsCubit extends Cubit<TransactionsState> {
   final TransactionsRepository _repository;
-  final CustomersRepository _customersRepo; // إضافة مستودع الزبائن
+  final CustomersRepository _customersRepo;
   final UserModel currentUser;
 
   StreamSubscription? _invoicesSub;
   StreamSubscription? _returnsSub;
   StreamSubscription? _receiptsSub;
   StreamSubscription? _customersSub;
+  StreamSubscription? _configSub; // تم نقل المتغير إلى مكانه الصحيح هنا!
 
   List<InvoiceModel> _invoices =[];
   List<ReturnModel> _returns =[];
   List<ReceiptModel> _receipts =[];
-  List<CustomerModel> allCustomers =[]; // قائمة الزبائن المتاحة
+  List<CustomerModel> allCustomers =[];
   List<UnifiedTransaction> _allUnified =[];
 
   TransactionFilters filters = TransactionFilters();
@@ -94,10 +95,17 @@ class TransactionsCubit extends Cubit<TransactionsState> {
   }
 
   Future<void> _initData() async {
-    currencyRate = await _repository.getCurrencyRate();
     final savedFilters = await TransactionsFiltersStorage.getFilters();
     if (savedFilters != null) filters = savedFilters;
     else filters.selectedDelegates = [currentUser.id];
+
+    // الاستماع المباشر لسعر الدولار
+    _configSub = FirebaseFirestore.instance.collection(FirestoreKeys.settings).doc(FirestoreKeys.appConfigDoc).snapshots().listen((doc) {
+      if (doc.exists) {
+        currencyRate = (doc.data()?['currency_rate'] ?? 1.0).toDouble();
+        applyFilters(); // تحديث الشاشة فوراً
+      }
+    });
 
     await refreshDelegates();
     _initStreams();
@@ -115,7 +123,6 @@ class TransactionsCubit extends Cubit<TransactionsState> {
   void _initStreams() {
     final delegateIds =[currentUser.id, ...currentUser.canMonitor];
 
-    // جلب الزبائن لتعويض الأسماء في السندات والبحث
     _customersSub = _customersRepo.getCustomersStream(currentUser).listen((data) {
       allCustomers = data;
       _mergeAndEmit();
@@ -164,7 +171,6 @@ class TransactionsCubit extends Cubit<TransactionsState> {
       final isMine = rec.delegateId == currentUser.id;
       final showModDate = (!isMine) || (isMine && currentUser.permissions.receiptEdit);
 
-      // السحر هنا: جلب اسم الزبون من قائمة الزبائن المحملة
       String cName = 'غير معروف';
       try { cName = allCustomers.firstWhere((c) => c.id == rec.creditorAccount).customerName; } catch(e){}
 
@@ -191,7 +197,6 @@ class TransactionsCubit extends Cubit<TransactionsState> {
       if (filters.fromDate != null && t.date.isBefore(filters.fromDate!)) return false;
       if (filters.toDate != null && t.date.isAfter(filters.toDate!.add(const Duration(days: 1)))) return false;
 
-      // فلتر الزبون والنقدي
       if (filters.filterCashOnly && t.customerId.isNotEmpty) return false;
       if (filters.selectedCustomerId != null && t.customerId != filters.selectedCustomerId) return false;
 
@@ -245,7 +250,7 @@ class TransactionsCubit extends Cubit<TransactionsState> {
 
   Future<void> exportDataToExcel() async {
     try {
-      List<InvoiceModel> invs = []; List<ReturnModel> rets =[]; List<ReceiptModel> recs =[];
+      List<InvoiceModel> invs =[]; List<ReturnModel> rets =[]; List<ReceiptModel> recs = [];
       List<UnifiedTransaction> source = _allUnified;
       if (state is TransactionsLoaded) {
         source = (state as TransactionsLoaded).transactions;
@@ -263,7 +268,7 @@ class TransactionsCubit extends Cubit<TransactionsState> {
 
   @override
   Future<void> close() {
-    _invoicesSub?.cancel(); _returnsSub?.cancel(); _receiptsSub?.cancel(); _customersSub?.cancel();
+    _invoicesSub?.cancel(); _returnsSub?.cancel(); _receiptsSub?.cancel(); _customersSub?.cancel(); _configSub?.cancel();
     return super.close();
   }
 }

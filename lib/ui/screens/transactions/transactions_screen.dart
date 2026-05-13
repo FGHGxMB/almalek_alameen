@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import '../../../data/models/unified_transaction.dart';
 import '../../../logic/auth/auth_cubit.dart';
 import '../../../logic/auth/auth_state.dart';
@@ -81,10 +82,10 @@ class TransactionsScreen extends StatelessWidget {
               final cubit = context.read<TransactionsCubit>();
               return Column(
                 children:[
-                  // شريط سعر الدولار
+                  // شريط سعر الدولار (بالفواصل)
                   Container(
                     width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 6), color: Colors.grey.shade200,
-                    child: Text('سعر الدولار اليوم: ${cubit.currencyRate}', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade800)),
+                    child: Text('سعر الدولار اليوم: ${NumberFormat('#,##0.##').format(cubit.currencyRate)}', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade800)),
                   ),
                   Expanded(
                     child: RefreshIndicator(

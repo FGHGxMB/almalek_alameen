@@ -24,6 +24,7 @@ class InvoiceModel {
   final List<TransactionItemModel> items;
   final String printAddress;
   final String printPhone;
+  final String printName;
 
   InvoiceModel({
     required this.id, required this.invoiceNumber, required this.delegateInvoiceNumber,
@@ -34,6 +35,7 @@ class InvoiceModel {
     required this.delegateId, required this.items,
     this.printAddress = '',
     this.printPhone = '',
+    this.printName = '',
   });
 
   factory InvoiceModel.fromFirestore(DocumentSnapshot doc) {
@@ -61,6 +63,8 @@ class InvoiceModel {
           .toList() ??[],
       printAddress: data['print_address'] ?? '',
       printPhone: data['print_phone'] ?? '',
+      printName: data['print_name'] ?? '',
+
     );
   }
 
@@ -84,6 +88,7 @@ class InvoiceModel {
       FirestoreKeys.items: items.map((e) => e.toMap()).toList(),
       'print_address': printAddress,
       'print_phone': printPhone,
+      'print_name': printName,
     };
   }
 
@@ -93,6 +98,7 @@ class InvoiceModel {
     String? invoiceNote, double? discount, String? costCenterCode, bool? isSynced,
     String? pendingAction, DateTime? createdAt, DateTime? updatedAt,
     String? delegateId, List<TransactionItemModel>? items,
+    String? printName,
   }) {
     return InvoiceModel(
       id: id ?? this.id, invoiceNumber: invoiceNumber ?? this.invoiceNumber, delegateInvoiceNumber: delegateInvoiceNumber ?? this.delegateInvoiceNumber,
@@ -101,6 +107,7 @@ class InvoiceModel {
       discount: discount ?? this.discount, costCenterCode: costCenterCode ?? this.costCenterCode, isSynced: isSynced ?? this.isSynced,
       pendingAction: pendingAction ?? this.pendingAction, createdAt: createdAt ?? this.createdAt, updatedAt: updatedAt ?? this.updatedAt,
       delegateId: delegateId ?? this.delegateId, items: items ?? this.items,
+      printName: printName ?? this.printName,
     );
   }
 }

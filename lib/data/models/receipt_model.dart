@@ -20,6 +20,7 @@ class ReceiptModel {
   final String delegateId;
   final String printAddress;
   final String printPhone;
+  final String printName;
 
   ReceiptModel({
     required this.id, required this.receiptNumber, required this.delegateReceiptNumber,
@@ -29,6 +30,7 @@ class ReceiptModel {
     required this.updatedAt, required this.delegateId,
     this.printAddress = '',
     this.printPhone = '',
+    this.printName = '',
   });
 
   factory ReceiptModel.fromFirestore(DocumentSnapshot doc) {
@@ -51,6 +53,7 @@ class ReceiptModel {
       delegateId: data[FirestoreKeys.delegateId] ?? '',
       printAddress: data['print_address'] ?? '',
       printPhone: data['print_phone'] ?? '',
+      printName: data['print_name'] ?? '',
     );
   }
 
@@ -71,6 +74,7 @@ class ReceiptModel {
       FirestoreKeys.delegateId: delegateId,
       'print_address': printAddress,
       'print_phone': printPhone,
+      'print_name': printName,
     };
   }
 
@@ -79,6 +83,7 @@ class ReceiptModel {
     String? debtorAccount, double? amount, String? lineNote, String? costCenterCode,
     DateTime? date, bool? isSynced, String? pendingAction, DateTime? createdAt,
     DateTime? updatedAt, String? delegateId,
+    String? printName,
   }) {
     return ReceiptModel(
       id: id ?? this.id, receiptNumber: receiptNumber ?? this.receiptNumber,
@@ -89,6 +94,7 @@ class ReceiptModel {
       isSynced: isSynced ?? this.isSynced, pendingAction: pendingAction ?? this.pendingAction,
       createdAt: createdAt ?? this.createdAt, updatedAt: updatedAt ?? this.updatedAt,
       delegateId: delegateId ?? this.delegateId,
+      printName: printName ?? this.printName,
     );
   }
 }
