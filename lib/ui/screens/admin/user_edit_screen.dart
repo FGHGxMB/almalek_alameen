@@ -1,9 +1,11 @@
 // lib/ui/screens/admin/user_edit_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/repositories/admin_repository.dart';
+import '../../../logic/admin/admin_cubit.dart';
 import '../../../core/constants/firestore_keys.dart';
 
 class UserEditScreen extends StatefulWidget {
@@ -23,10 +25,11 @@ class _UserEditScreenState extends State<UserEditScreen> {
   final _warehouseController = TextEditingController();
   final _mainAccountController = TextEditingController();
   final _costCenterController = TextEditingController();
+  final _cashBoxController = TextEditingController(); // حقل الصندوق الجديد
   final _suffixController = TextEditingController();
 
   bool _isActive = true;
-  List<String> _canMonitor =[];
+  List<String> _canMonitor = [];
   bool _isLoading = false;
   Color _selectedColor = Colors.orange;
 
@@ -36,17 +39,15 @@ class _UserEditScreenState extends State<UserEditScreen> {
   ];
 
   final Map<String, bool> _perms = {
-    'adminAccess': false, 'exportData': false, 'companyAccountsView': false, 'companyAccountsEdit': false,
+    'adminAccess': false, 'exportData': false, 'companyAccountsView': false, 'companyAccountsEdit': false, 'updateCurrency': false,
     'invoiceCreate': false, 'invoiceEdit': false, 'invoiceDelete': false,
     'returnCreate': false, 'returnEdit': false, 'returnDelete': false,
     'receiptCreate': false, 'receiptEdit': false, 'receiptDelete': false,
     'customerCreate': false, 'customerEdit': false, 'customerDelete': false,
-    // الـ 12 صلاحية الجديدة للمراقبين
-    'customerCreateMonitored': false, 'customerEditMonitored': false, 'customerDeleteMonitored': false,
-    'invoiceCreateMonitored': false, 'invoiceEditMonitored': false, 'invoiceDeleteMonitored': false,
-    'returnCreateMonitored': false, 'returnEditMonitored': false, 'returnDeleteMonitored': false,
-    'receiptCreateMonitored': false, 'receiptEditMonitored': false, 'receiptDeleteMonitored': false,
-    'updateCurrency': false,
+    'customerEditMonitored': false, 'customerDeleteMonitored': false,
+    'invoiceEditMonitored': false, 'invoiceDeleteMonitored': false,
+    'returnEditMonitored': false, 'returnDeleteMonitored': false,
+    'receiptEditMonitored': false, 'receiptDeleteMonitored': false,
   };
 
   Color _hexToColor(String hex) {
@@ -59,24 +60,31 @@ class _UserEditScreenState extends State<UserEditScreen> {
     super.initState();
     if (widget.user != null) {
       final u = widget.user!;
-      _nameController.text = u.accountName; _emailController.text = u.email;
+      _nameController.text = u.accountName; _emailController.text = u.email; _passwordController.text = u.password;
       _rankController.text = u.rank; _warehouseController.text = u.warehouseCode;
       _mainAccountController.text = u.mainCustomerAccount; _costCenterController.text = u.costCenterCode;
+      _cashBoxController.text = u.cashBoxCode; // قراءة رمز الصندوق
       _suffixController.text = u.customerSuffix; _isActive = u.isActive;
       _canMonitor = List.from(u.canMonitor);
-      _selectedColor = _hexToColor(u.accountColor);
+
+      // إصلاح مشكلة تحديد اللون (نطابق قيمة اللون مع القائمة الجاهزة)
+      Color parsedColor = _hexToColor(u.accountColor);
+      try {
+        _selectedColor = _userColors.firstWhere((c) => c.value == parsedColor.value);
+      } catch(e) {
+        _selectedColor = _userColors[0]; // افتراضي إذا لم يتطابق
+      }
 
       _perms['adminAccess'] = u.permissions.adminAccess; _perms['exportData'] = u.permissions.exportData;
-      _perms['companyAccountsView'] = u.permissions.companyAccountsView; _perms['companyAccountsEdit'] = u.permissions.companyAccountsEdit;
+      _perms['companyAccountsView'] = u.permissions.companyAccountsView; _perms['companyAccountsEdit'] = u.permissions.companyAccountsEdit; _perms['updateCurrency'] = u.permissions.updateCurrency;
       _perms['invoiceCreate'] = u.permissions.invoiceCreate; _perms['invoiceEdit'] = u.permissions.invoiceEdit; _perms['invoiceDelete'] = u.permissions.invoiceDelete;
       _perms['returnCreate'] = u.permissions.returnCreate; _perms['returnEdit'] = u.permissions.returnEdit; _perms['returnDelete'] = u.permissions.returnDelete;
       _perms['receiptCreate'] = u.permissions.receiptCreate; _perms['receiptEdit'] = u.permissions.receiptEdit; _perms['receiptDelete'] = u.permissions.receiptDelete;
       _perms['customerCreate'] = u.permissions.customerCreate; _perms['customerEdit'] = u.permissions.customerEdit; _perms['customerDelete'] = u.permissions.customerDelete;
-      _perms['customerCreateMonitored'] = u.permissions.customerCreateMonitored; _perms['customerEditMonitored'] = u.permissions.customerEditMonitored; _perms['customerDeleteMonitored'] = u.permissions.customerDeleteMonitored;
-      _perms['invoiceCreateMonitored'] = u.permissions.invoiceCreateMonitored; _perms['invoiceEditMonitored'] = u.permissions.invoiceEditMonitored; _perms['invoiceDeleteMonitored'] = u.permissions.invoiceDeleteMonitored;
-      _perms['returnCreateMonitored'] = u.permissions.returnCreateMonitored; _perms['returnEditMonitored'] = u.permissions.returnEditMonitored; _perms['returnDeleteMonitored'] = u.permissions.returnDeleteMonitored;
-      _perms['receiptCreateMonitored'] = u.permissions.receiptCreateMonitored; _perms['receiptEditMonitored'] = u.permissions.receiptEditMonitored; _perms['receiptDeleteMonitored'] = u.permissions.receiptDeleteMonitored;
-      _perms['updateCurrency'] = u.permissions.updateCurrency;
+      _perms['customerEditMonitored'] = u.permissions.customerEditMonitored; _perms['customerDeleteMonitored'] = u.permissions.customerDeleteMonitored;
+      _perms['invoiceEditMonitored'] = u.permissions.invoiceEditMonitored; _perms['invoiceDeleteMonitored'] = u.permissions.invoiceDeleteMonitored;
+      _perms['returnEditMonitored'] = u.permissions.returnEditMonitored; _perms['returnDeleteMonitored'] = u.permissions.returnDeleteMonitored;
+      _perms['receiptEditMonitored'] = u.permissions.receiptEditMonitored; _perms['receiptDeleteMonitored'] = u.permissions.receiptDeleteMonitored;
     }
   }
 
@@ -88,24 +96,25 @@ class _UserEditScreenState extends State<UserEditScreen> {
       final repo = context.read<AdminRepository>();
       final permissionsMap = {
         'admin_access': _perms['adminAccess'], 'export_data': _perms['exportData'],
-        'company_accounts_view': _perms['companyAccountsView'], 'company_accounts_edit': _perms['companyAccountsEdit'],
+        'company_accounts_view': _perms['companyAccountsView'], 'company_accounts_edit': _perms['companyAccountsEdit'], 'update_currency': _perms['updateCurrency'],
         'invoice_create': _perms['invoiceCreate'], 'invoice_edit': _perms['invoiceEdit'], 'invoice_delete': _perms['invoiceDelete'],
         'return_create': _perms['returnCreate'], 'return_edit': _perms['returnEdit'], 'return_delete': _perms['returnDelete'],
         'receipt_create': _perms['receiptCreate'], 'receipt_edit': _perms['receiptEdit'], 'receipt_delete': _perms['receiptDelete'],
         'customer_create': _perms['customerCreate'], 'customer_edit': _perms['customerEdit'], 'customer_delete': _perms['customerDelete'],
-        'customer_create_monitored': _perms['customerCreateMonitored'], 'customer_edit_monitored': _perms['customerEditMonitored'], 'customer_delete_monitored': _perms['customerDeleteMonitored'],
-        'invoice_create_monitored': _perms['invoiceCreateMonitored'], 'invoice_edit_monitored': _perms['invoiceEditMonitored'], 'invoice_delete_monitored': _perms['invoiceDeleteMonitored'],
-        'return_create_monitored': _perms['returnCreateMonitored'], 'return_edit_monitored': _perms['returnEditMonitored'], 'return_delete_monitored': _perms['returnDeleteMonitored'],
-        'receipt_create_monitored': _perms['receiptCreateMonitored'], 'receipt_edit_monitored': _perms['receiptEditMonitored'], 'receipt_delete_monitored': _perms['receiptDeleteMonitored'],
-        'update_currency': _perms['updateCurrency'],
+        'customer_edit_monitored': _perms['customerEditMonitored'], 'customer_delete_monitored': _perms['customerDeleteMonitored'],
+        'invoice_edit_monitored': _perms['invoiceEditMonitored'], 'invoice_delete_monitored': _perms['invoiceDeleteMonitored'],
+        'return_edit_monitored': _perms['returnEditMonitored'], 'return_delete_monitored': _perms['returnDeleteMonitored'],
+        'receipt_edit_monitored': _perms['receiptEditMonitored'], 'receipt_delete_monitored': _perms['receiptDeleteMonitored'],
       };
 
       final userData = {
         FirestoreKeys.accountName: _nameController.text.trim(), FirestoreKeys.rank: _rankController.text.trim(),
         FirestoreKeys.warehouseCode: _warehouseController.text.trim(), FirestoreKeys.mainCustomerAccount: _mainAccountController.text.trim(),
-        FirestoreKeys.costCenterCode: _costCenterController.text.trim(), FirestoreKeys.customerSuffix: _suffixController.text.trim(),
+        FirestoreKeys.costCenterCode: _costCenterController.text.trim(), FirestoreKeys.cashBoxCode: _cashBoxController.text.trim(),
+        FirestoreKeys.password: _passwordController.text.trim(),
+        FirestoreKeys.customerSuffix: _suffixController.text.trim(),
         FirestoreKeys.isActive: _isActive, FirestoreKeys.canMonitor: _canMonitor, FirestoreKeys.permissions: permissionsMap,
-        FirestoreKeys.accountColor: _colorToHex(_selectedColor), // حفظ اللون
+        FirestoreKeys.accountColor: _colorToHex(_selectedColor),
       };
 
       if (widget.user == null) {
@@ -127,13 +136,66 @@ class _UserEditScreenState extends State<UserEditScreen> {
     }
   }
 
-  Widget _buildToggle(String title, String key) => SwitchListTile(title: Text(title, style: const TextStyle(fontSize: 14)), value: _perms[key]!, onChanged: (val) => setState(() => _perms[key] = val), dense: true);
+  // 1. دالة الفحص قبل الحذف
+  void _checkAndDelete() async {
+    showDialog(context: context, barrierDismissible: false, builder: (ctx) => const Center(child: CircularProgressIndicator()));
+
+    try {
+      final hasRecords = await context.read<AdminCubit>().checkUserRecords(widget.user!.id);
+      if (mounted) Navigator.pop(context); // إغلاق التحميل
+
+      if (hasRecords) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('لا يمكن حذف المستخدم لوجود زبائن أو فواتير أو سندات مسجلة باسمه!'), backgroundColor: Colors.red));
+      } else {
+        _showActualDeleteDialog(); // إظهار نافذة الـ 3 ثوانٍ
+      }
+    } catch (e) {
+      if (mounted) Navigator.pop(context); // إغلاق التحميل
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: Colors.red));
+    }
+  }
+
+  // 2. نافذة الحذف مع العداد 3 ثوانٍ
+  void _showActualDeleteDialog() {
+    showDialog(context: context, builder: (ctx) {
+      return StreamBuilder<int>(
+          stream: Stream.periodic(const Duration(seconds: 1), (i) => 3 - i - 1).take(3),
+          builder: (context, snapshot) {
+            final timeLeft = snapshot.data ?? 3;
+            final isReady = timeLeft <= 0;
+            return AlertDialog(
+                title: const Text('تأكيد الحذف نهائياً', style: TextStyle(color: Colors.red)),
+                content: const Text('هل أنت متأكد من حذف هذا المستخدم؟ سيتم إيقاف حسابه فوراً.'),
+                actions: [
+                  TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+                  ElevatedButton(
+                    onPressed: isReady ? () {
+                      context.read<AdminCubit>().deleteUser(widget.user!.id);
+                      Navigator.pop(ctx);
+                      context.pop();
+                    } : null,
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                    child: Text(isReady ? 'حذف الحساب' : 'حذف ($timeLeft)'),
+                  )
+                ]
+            );
+          }
+      );
+    });
+  }
+
+  Widget _buildToggle(String title, String key) => SwitchListTile(title: Text(title, style: const TextStyle(fontSize: 14)), value: _perms[key] ?? false, onChanged: (val) => setState(() => _perms[key] = val), dense: true);
 
   @override
   Widget build(BuildContext context) {
     final isNew = widget.user == null;
     return Scaffold(
-      appBar: AppBar(title: Text(isNew ? 'إضافة مستخدم' : 'تعديل ${widget.user!.accountName}')),
+      appBar: AppBar(
+        title: Text(isNew ? 'إضافة مستخدم' : 'تعديل ${widget.user!.accountName}'),
+        actions: isNew ? null : [
+          IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: _checkAndDelete)
+        ],
+      ),
       body: _isLoading ? const Center(child: CircularProgressIndicator()) : SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -146,8 +208,15 @@ class _UserEditScreenState extends State<UserEditScreen> {
               TextFormField(controller: _nameController, decoration: const InputDecoration(labelText: 'الاسم (Account Name)', border: OutlineInputBorder()), validator: (v) => v!.isEmpty ? 'مطلوب' : null),
               const SizedBox(height: 12),
               TextFormField(controller: _emailController, readOnly: !isNew, decoration: InputDecoration(labelText: 'البريد الإلكتروني', border: const OutlineInputBorder(), filled: !isNew), validator: (v) => v!.isEmpty ? 'مطلوب' : null),
-              if (isNew) const SizedBox(height: 12),
-              if (isNew) TextFormField(controller: _passwordController, obscureText: true, decoration: const InputDecoration(labelText: 'كلمة المرور', border: OutlineInputBorder()), validator: (v) => v!.length < 6 ? 'أقل شيء 6 حروف' : null),
+              const SizedBox(height: 12),
+              // تعديل حقل كلمة السر: يظهر دائماً، ويكون مقروءاً، ومقفلاً للتعديل إذا كان الحساب قديماً
+              TextFormField(
+                  controller: _passwordController,
+                  obscureText: false, // نجعلها مقروءة للمدير
+                  readOnly: !isNew,   // لا يمكن تغييرها من هنا إذا كان حساباً قديماً
+                  decoration: InputDecoration(labelText: 'كلمة المرور', border: const OutlineInputBorder(), filled: !isNew),
+                  validator: (v) => v!.length < 6 ? 'أقل شيء 6 حروف' : null
+              ),
               const SizedBox(height: 12),
 
               const Text('لون تمييز الحساب (يظهر تحت زبائنه للمراقبين):', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -165,7 +234,9 @@ class _UserEditScreenState extends State<UserEditScreen> {
               const SizedBox(height: 12),
               Row(children:[Expanded(child: TextFormField(controller: _warehouseController, decoration: const InputDecoration(labelText: 'رمز المستودع', border: OutlineInputBorder()))), const SizedBox(width: 8), Expanded(child: TextFormField(controller: _costCenterController, decoration: const InputDecoration(labelText: 'مركز الكلفة', border: OutlineInputBorder())))]),
               const SizedBox(height: 12),
-              Row(children:[Expanded(child: TextFormField(controller: _mainAccountController, decoration: const InputDecoration(labelText: 'بادئة حساب الزبائن (مثال: 102)', border: OutlineInputBorder()))), const SizedBox(width: 8), Expanded(child: TextFormField(controller: _suffixController, decoration: const InputDecoration(labelText: 'لاحقة اسم الزبون (مثال: متجر)', border: OutlineInputBorder())))]),
+              Row(children:[Expanded(child: TextFormField(controller: _cashBoxController, decoration: const InputDecoration(labelText: 'رمز صندوق الكاش', border: OutlineInputBorder())))]), // الحقل الجديد
+              const SizedBox(height: 12),
+              Row(children:[Expanded(child: TextFormField(controller: _mainAccountController, decoration: const InputDecoration(labelText: 'بادئة الزبائن (مثال: 102)', border: OutlineInputBorder()))), const SizedBox(width: 8), Expanded(child: TextFormField(controller: _suffixController, decoration: const InputDecoration(labelText: 'لاحقة الزبون (مثال: متجر)', border: OutlineInputBorder())))]),
               const SizedBox(height: 12),
               SwitchListTile(title: const Text('حساب مفعل (نشط)', style: TextStyle(fontWeight: FontWeight.bold)), value: _isActive, onChanged: (val) => setState(() => _isActive = val), activeColor: Colors.teal),
               const Divider(height: 32, thickness: 2),
@@ -190,10 +261,10 @@ class _UserEditScreenState extends State<UserEditScreen> {
 
               const Divider(height: 32, thickness: 2),
               const Text('صلاحيات متقدمة (لحسابات المراقبين)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.orange)),
-              _buildToggle('إضافة زبون لغيره', 'customerCreateMonitored'), _buildToggle('تعديل زبون لغيره', 'customerEditMonitored'), _buildToggle('حذف زبون لغيره', 'customerDeleteMonitored'),
-              _buildToggle('إنشاء فاتورة لغيره', 'invoiceCreateMonitored'), _buildToggle('تعديل فاتورة لغيره', 'invoiceEditMonitored'), _buildToggle('حذف فاتورة لغيره', 'invoiceDeleteMonitored'),
-              _buildToggle('إنشاء مرتجع لغيره', 'returnCreateMonitored'), _buildToggle('تعديل مرتجع لغيره', 'returnEditMonitored'), _buildToggle('حذف مرتجع لغيره', 'returnDeleteMonitored'),
-              _buildToggle('إنشاء سند لغيره', 'receiptCreateMonitored'), _buildToggle('تعديل سند لغيره', 'receiptEditMonitored'), _buildToggle('حذف سند لغيره', 'receiptDeleteMonitored'),
+              _buildToggle('تعديل زبون لغيره', 'customerEditMonitored'), _buildToggle('حذف زبون لغيره', 'customerDeleteMonitored'),
+              _buildToggle('تعديل فاتورة لغيره', 'invoiceEditMonitored'), _buildToggle('حذف فاتورة لغيره', 'invoiceDeleteMonitored'),
+              _buildToggle('تعديل مرتجع لغيره', 'returnEditMonitored'), _buildToggle('حذف مرتجع لغيره', 'returnDeleteMonitored'),
+              _buildToggle('تعديل سند لغيره', 'receiptEditMonitored'), _buildToggle('حذف سند لغيره', 'receiptDeleteMonitored'),
 
               const SizedBox(height: 32),
               SizedBox(width: double.infinity, child: ElevatedButton(onPressed: _saveUser, style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), backgroundColor: Colors.teal), child: const Text('حفظ بيانات المستخدم', style: TextStyle(fontSize: 18, color: Colors.white)))),

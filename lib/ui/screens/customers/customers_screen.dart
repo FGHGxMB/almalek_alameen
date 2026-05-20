@@ -53,7 +53,7 @@ class CustomersScreen extends StatelessWidget {
                       // زر الفلتر يظهر دائماً ويختفي في وضع التحديد
                       if (!cubit.isSelectionMode)
                         IconButton(
-                          icon: Icon(Icons.filter_alt, color: cubit.hasActiveFilters ? Colors.orangeAccent : Colors.white),
+                          icon: Icon(Icons.filter_alt, color: cubit.hasActiveFilters ? Colors.orangeAccent : Colors.grey),
                           onPressed: () {
                             final allAreas = state is CustomersLoaded ? state.customers.map((c) => c.region).toSet().toList() : <String>[];
                             showModalBottomSheet(
@@ -137,14 +137,17 @@ class CustomersScreen extends StatelessWidget {
                             if (!isMine)
                               Container(
                                 margin: const EdgeInsets.only(top: 4),
-                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                decoration: BoxDecoration(color: ownerColor, borderRadius: BorderRadius.circular(4)),
-                                child: Text(ownerName.length > 6 ? ownerName.substring(0,6) : ownerName, style: const TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold)),
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(color: _hexToColor(cubit.usersMap[c.delegateId]?.accountColor ?? '#FFA500'), borderRadius: BorderRadius.circular(4)),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children:[Text(cubit.usersMap[c.delegateId]?.accountName ?? 'مجهول', style: const TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold))],
+                                ),
                               )
                           ],
                         ),
-                        title: Text(displayTitle, style: const TextStyle(fontWeight: FontWeight.bold)), // استخدمنا الاسم الصافي
-                        subtitle: Text('${c.gender == 'male' ? 'ذكر' : 'أنثى'} | رمز: ${c.accountCode}'),
+                        title: Text(displayTitle, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)), // استخدمنا الاسم الصافي
+                        subtitle: Text('${c.gender == 'male' ? 'ذكر' : 'أنثى'} | رمز: ${c.accountCode}', style: const TextStyle(fontSize: 12),),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children:[
@@ -199,7 +202,7 @@ class CustomersScreen extends StatelessWidget {
         ),
         floatingActionButton: Builder(
             builder: (context) {
-              final hasPermission = currentUser.permissions.customerCreate || currentUser.permissions.customerCreateMonitored;
+              final hasPermission = currentUser.permissions.customerCreate;
               if (!hasPermission) return const SizedBox.shrink();
               return FloatingActionButton(
                 onPressed: () => context.push(AppRoutes.customerForm, extra: {'targetDelegateId': currentUser.id}),

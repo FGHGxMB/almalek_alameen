@@ -50,8 +50,12 @@ class InvoiceFormCubit extends Cubit<InvoiceFormState> {
       _currencyRate = await _transactionsRepo.getCurrencyRate();
       _products = await _productsRepo.getLocalProducts();
 
+      // السحر هنا: نحدد من هو صاحب الفاتورة (إذا كان تعديلاً نأخذ الـ ID الخاص به، وإلا فهو أنت)
+      final targetDelegateId = invoiceToEdit?.delegateId ?? currentUser.id;
+
       _customersRepo.getCustomersStream(currentUser).listen((all) {
-        _myCustomers = all.where((c) => c.delegateId == currentUser.id).toList();
+        // فلترة الزبائن بناءً على صاحب الفاتورة وليس currentUser فقط
+        _myCustomers = all.where((c) => c.delegateId == targetDelegateId).toList();
 
         if (invoiceToEdit != null) {
           _items = List.from(invoiceToEdit.items);

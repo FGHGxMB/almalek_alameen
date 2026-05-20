@@ -17,21 +17,29 @@ class CompanyAccountsCubit extends Cubit<CompanyAccountsState> {
     );
   }
 
-  Future<void> reorder(int oldIndex, int newIndex) async {
+  // إعادة الترتيب المخصصة لكل تبويب لكي لا تختلط الأرقام
+  Future<void> reorder(int oldIndex, int newIndex, List<CompanyAccountModel> tabList) async {
     if (state is CompanyAccountsLoaded) {
-      final currentState = state as CompanyAccountsLoaded;
-      final list = List<CompanyAccountModel>.from(currentState.accounts);
-
       if (newIndex > oldIndex) newIndex -= 1;
-      final item = list.removeAt(oldIndex);
-      list.insert(newIndex, item);
+      final item = tabList.removeAt(oldIndex);
+      tabList.insert(newIndex, item);
 
-      // نعكس التغيير محلياً فوراً للشعور بالسرعة، ثم نرسله للسيرفر
-      emit(CompanyAccountsLoaded(list));
+      // نعكس الترتيب محلياً قبل السيرفر (نحدث القائمة الرئيسية بالترتيب الجديد)
+      final allAccounts = List<CompanyAccountModel>.from((state as CompanyAccountsLoaded).accounts);
+      for (int i = 0; i < tabList.length; i++) {
+        final currentAccount = tabList[i];
+        final globalIndex = allAccounts.indexWhere((a) => a.id == currentAccount.id);
+        if (globalIndex != -1) {
+          allAccounts[globalIndex] = currentAccount.copyWith(orderIndex: i);
+        }
+      }
+
+      emit(CompanyAccountsLoaded(allAccounts));
+
       try {
-        await _repository.reorderAccounts(list);
+        await _repository.reorderAccounts(tabList);
       } catch (e) {
-        // في حال الفشل، يمكنك إعادة تحميل البيانات
+        // خطأ صامت في السحب
       }
     }
   }

@@ -34,9 +34,13 @@ class ReceiptFormCubit extends Cubit<ReceiptFormState> {
 
   void initData({ReceiptModel? receiptToEdit}) {
     emit(ReceiptFormLoading());
+    // تحديد مالك السند
+    final targetDelegateId = receiptToEdit?.delegateId ?? currentUser.id;
+
     _customersSub = _customersRepo.getCustomersStream(currentUser).listen(
             (customers) {
-          _customers = customers.where((c) => c.delegateId == currentUser.id).toList(); // زبائني فقط
+          // فلترة الزبائن بناءً على صاحب السند
+          _customers = customers.where((c) => c.delegateId == targetDelegateId).toList();
           emit(ReceiptFormReady(_customers));
         },
         onError: (e) {

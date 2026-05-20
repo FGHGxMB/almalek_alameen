@@ -1,6 +1,7 @@
 // lib/data/repositories/company_accounts_repository.dart
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:spice_app/data/models/cost_material_model.dart';
 import '../../core/constants/firestore_keys.dart';
 import '../models/company_account_model.dart';
 
@@ -64,5 +65,25 @@ class CompanyAccountsRepository {
       batch.update(docRef, {'order_index': i});
     }
     await batch.commit();
+  }
+
+  // --- دوال تكلفة المواد ---
+  Stream<List<CostMaterialModel>> getCostMaterialsStream() {
+    return _firestore.collection(FirestoreKeys.costMaterials).snapshots(includeMetadataChanges: true).map((snap) => snap.docs.map((doc) => CostMaterialModel.fromFirestore(doc)).toList());
+  }
+
+  Future<void> saveCostMaterial(CostMaterialModel material, {bool isNew = false}) async {
+    final docRef = isNew ? _firestore.collection(FirestoreKeys.costMaterials).doc() : _firestore.collection(FirestoreKeys.costMaterials).doc(material.id);
+    await docRef.set(material.copyWith(id: docRef.id).toFirestore(), SetOptions(merge: true));
+  }
+
+  Future<void> deleteCostMaterial(String id) async {
+    await _firestore.collection(FirestoreKeys.costMaterials).doc(id).delete();
+  }
+
+  Future<void> moveCostMaterial(String id, String newTab, int newCol, int newRow) async {
+    await _firestore.collection(FirestoreKeys.costMaterials).doc(id).update({
+      'tab_name': newTab, 'column_index': newCol, 'row_index': newRow,
+    });
   }
 }

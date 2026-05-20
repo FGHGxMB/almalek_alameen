@@ -37,7 +37,6 @@ class AdminScreen extends StatelessWidget {
                       subtitle: Text('${user.rank} | ${user.email}'),
                       trailing: const Icon(Icons.edit),
                       onTap: () {
-                        // تمرير المستخدم الحالي وكل المستخدمين (لصلاحية المراقبة)
                         context.push(AppRoutes.userEdit, extra: {'user': user, 'allUsers': state.users});
                       },
                     ),

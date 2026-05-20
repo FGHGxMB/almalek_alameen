@@ -7,6 +7,7 @@ import '../../data/models/transaction_item_model.dart';
 
 class PrintDesignWidget extends StatelessWidget {
   final TransactionType type;
+  final String paymentMethod;
   final String docNumber;
   final DateTime date;
   final String delegateName;
@@ -20,7 +21,7 @@ class PrintDesignWidget extends StatelessWidget {
   final double discount;
 
   const PrintDesignWidget({
-    Key? key, required this.type, required this.docNumber, required this.date,
+    Key? key, required this.type, required this.paymentMethod, required this.docNumber, required this.date,
     required this.delegateName, required this.customerName, required this.customerAddress,
     required this.customerPhone, required this.companyInfoText, required this.items,
     required this.productNames, required this.totalAmount, this.discount = 0.0,
@@ -43,45 +44,46 @@ class PrintDesignWidget extends StatelessWidget {
         children:[
           // ---------------- القسم الأول (الشركة) ----------------
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children:[
+              if (companyInfoText.isNotEmpty)
+                SizedBox(width: 100, child: Text(companyInfoText, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, color: Colors.black)),),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children:[
-                    Text(title, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.black)),
+                    Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black)),
                     const SizedBox(height: 8),
-                    Row(
+                    Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children:[
-                        Text('رقم: $docNumber', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black)),
-                        const SizedBox(width: 10),
-                        Text('الموزع: $delegateName', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black)),
+                        if (type == TransactionType.receipt)
+                          Text('رقم $docNumber', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black))
+                        else
+                          Text('${paymentMethod == 'credit' ? 'آجلة' : 'نقدية'} - رقم $docNumber', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black)),
+                        Text('الموزع: $delegateName', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black)),
                       ],
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 20),
               // اللوغو (تأكد من وجوده في assets/print_logo.png)
-              Image.asset('assets/print_logo.png', width: 80, height: 80, fit: BoxFit.contain, errorBuilder: (c, e, s) => const SizedBox(width: 80, height: 80, child: Center(child: Icon(Icons.broken_image)))),
+              Image.asset('assets/print_logo.png', width: 100, height: 90, fit: BoxFit.contain, errorBuilder: (c, e, s) => const SizedBox(width: 80, height: 80, child: Center(child: Icon(Icons.broken_image)))),
             ],
           ),
-          const SizedBox(height: 8),
-          if (companyInfoText.isNotEmpty)
-            Text(companyInfoText, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, color: Colors.black)),
-          const Divider(thickness: 1.5, color: Colors.black),
+          const Divider(color: Colors.black),
 
           // ---------------- القسم الثاني (الزبون والتاريخ) ----------------
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children:[
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children:[
-                    Text('الزبون: $customerName', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black)),
-                    if (customerAddress.isNotEmpty) Text('المقيم في: $customerAddress', style: const TextStyle(fontSize: 12, color: Colors.black)),
+                    Text('الزبون: $customerName', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black)),
+                    Text('المقيم في: $customerAddress', style: const TextStyle(fontSize: 11, color: Colors.black)),
                   ],
                 ),
               ),
@@ -89,20 +91,20 @@ class PrintDesignWidget extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children:[
-                    Text('التاريخ: ${DateFormat('yyyy-MM-dd | HH:mm').format(date)}', style: const TextStyle(fontSize: 12, color: Colors.black)),
-                    if (customerPhone.isNotEmpty) Text('هاتف: $customerPhone', style: const TextStyle(fontSize: 12, color: Colors.black)),
+                    Text('التاريخ: ${DateFormat('yyyy-MM-dd | hh:mm a').format(date)}', style: const TextStyle(fontSize: 11, color: Colors.black)),
+                    Text('هاتف: $customerPhone', style: const TextStyle(fontSize: 11, color: Colors.black)),
                   ],
                 ),
               ),
             ],
           ),
-          const Divider(thickness: 1.5, color: Colors.black),
+          const Divider(color: Colors.black),
 
           // ---------------- القسم الثالث (الجدول أو نص السند) ----------------
           if (type == TransactionType.receipt) ...[
             const SizedBox(height: 24),
             // Text('تم استلام مبلغ ${_formatNum(totalAmount)} ليرة سورية كدفعة على الحساب.', textAlign: TextAlign.center, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
-            Row(mainAxisAlignment: MainAxisAlignment.start, children: [const Text('تم استلام مبلغ ', style: TextStyle(fontWeight: FontWeight.normal, fontSize: 18, color: Colors.black)), Text(_formatNum(totalAmount), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black)), const Text(" ليرة سورية كدفعة على الحساب.", style: TextStyle(fontWeight: FontWeight.normal, fontSize: 18, color: Colors.black))]),
+            Row(mainAxisAlignment: MainAxisAlignment.start, children: [const Text('تم استلام مبلغ ', style: TextStyle(fontWeight: FontWeight.normal, fontSize: 18, color: Colors.black)), Text(_formatNum(totalAmount), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black)), const Text(" ليرة سورية.", style: TextStyle(fontWeight: FontWeight.normal, fontSize: 18, color: Colors.black))]),
             // const SizedBox(height: 32),
           ] else ...[
             Table(
@@ -145,7 +147,7 @@ class PrintDesignWidget extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             // الملخص
-            if (discount > 0) Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children:[const Text('الحسم:', style: TextStyle(fontWeight: FontWeight.normal, fontSize: 16, color: Colors.black)), Text(_formatNum(discount), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black)), const Text(" ليرة سورية", style: TextStyle(fontWeight: FontWeight.normal, fontSize: 18, color: Colors.black))]),
+            if (discount > 0) Row(mainAxisAlignment: MainAxisAlignment.start, children:[const Text('الحسم: ', style: TextStyle(fontWeight: FontWeight.normal, fontSize: 16, color: Colors.black)), Text(_formatNum(discount), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black)), const Text(" ليرة سورية", style: TextStyle(fontWeight: FontWeight.normal, fontSize: 18, color: Colors.black))]),
             const Divider(color: Colors.black),
             Row(mainAxisAlignment: MainAxisAlignment.start, children: [const Text(' الصافي النهائي: ', style: TextStyle(fontWeight: FontWeight.normal, fontSize: 18, color: Colors.black)), Text(_formatNum(totalAmount), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black)), const Text(" ليرة سورية", style: TextStyle(fontWeight: FontWeight.normal, fontSize: 18, color: Colors.black))]),
           ],

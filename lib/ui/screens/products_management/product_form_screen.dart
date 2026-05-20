@@ -39,7 +39,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     _nameCtrl = TextEditingController(text: p?.itemName ?? '');
     _codeCtrl = TextEditingController(text: p?.itemCode ?? '');
     _tabCtrl = TextEditingController(text: p?.tabName ?? widget.initialTab);
-    _colCtrl = TextEditingController(text: (p?.columnIndex ?? widget.initialCol).toString());
+    _colCtrl = TextEditingController(text: ((p?.columnIndex ?? widget.initialCol) + 1).toString());
 
     _unit1Ctrl = TextEditingController(text: p?.unit1 ?? 'حبة');
     _price1Ctrl = TextEditingController(text: p?.shopPrice1.toString() ?? '0');
@@ -78,11 +78,14 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     final newProduct = ProductModel(
       id: widget.productToEdit?.id ?? '', itemCode: _codeCtrl.text.trim(), itemName: _nameCtrl.text.trim(),
       groupCode: widget.productToEdit?.groupCode ?? '', currencyCode: 'SYP', defaultUnit: defaultU, isActive: _isActive,
-      tabName: _tabCtrl.text.trim(), columnIndex: int.tryParse(_colCtrl.text) ?? 0, rowIndex: widget.productToEdit?.rowIndex ?? widget.initialRow,
+      tabName: _tabCtrl.text.trim(),
+      // نطرح 1 عند الحفظ
+      columnIndex: (int.tryParse(_colCtrl.text) ?? 1) - 1,
+      rowIndex: widget.productToEdit?.rowIndex ?? widget.initialRow,
 
-      unit1: _unit1Ctrl.text.trim(), barcode1: widget.productToEdit?.barcode1 ?? '', shopPrice1: double.tryParse(_price1Ctrl.text) ?? 0, consumerPrice1: 0, minPrice1: double.tryParse(_minPrice1Ctrl.text) ?? 0, costPrice1: double.tryParse(_costPrice1Ctrl.text) ?? 0, currency1: _cur1,
-      unit2: _unit2Ctrl.text.trim(), barcode2: widget.productToEdit?.barcode2 ?? '', shopPrice2: double.tryParse(_price2Ctrl.text) ?? 0, consumerPrice2: 0, minPrice2: double.tryParse(_minPrice2Ctrl.text) ?? 0, costPrice2: double.tryParse(_costPrice2Ctrl.text) ?? 0, currency2: _cur2,
-      unit3: _unit3Ctrl.text.trim(), barcode3: widget.productToEdit?.barcode3 ?? '', shopPrice3: double.tryParse(_price3Ctrl.text) ?? 0, consumerPrice3: 0, minPrice3: double.tryParse(_minPrice3Ctrl.text) ?? 0, costPrice3: double.tryParse(_costPrice3Ctrl.text) ?? 0, currency3: _cur3,
+      unit1: _unit1Ctrl.text.trim(), barcode1: widget.productToEdit?.barcode1 ?? '', shopPrice1: double.tryParse(_price1Ctrl.text) ?? 0, consumerPrice1: 0, minPrice1: double.tryParse(_minPrice1Ctrl.text) ?? 0, costPrice1: 0, currency1: _cur1,
+      unit2: _unit2Ctrl.text.trim(), barcode2: widget.productToEdit?.barcode2 ?? '', shopPrice2: double.tryParse(_price2Ctrl.text) ?? 0, consumerPrice2: 0, minPrice2: double.tryParse(_minPrice2Ctrl.text) ?? 0, costPrice2: 0, currency2: _cur2,
+      unit3: _unit3Ctrl.text.trim(), barcode3: widget.productToEdit?.barcode3 ?? '', shopPrice3: double.tryParse(_price3Ctrl.text) ?? 0, consumerPrice3: 0, minPrice3: double.tryParse(_minPrice3Ctrl.text) ?? 0, costPrice3: 0, currency3: _cur3,
       isSynced: false,
     );
 
@@ -160,8 +163,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
             const SizedBox(height: 12),
             Row(
               children:[
-                Expanded(child: TextFormField(controller: c, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'التكلفة', isDense: true, border: OutlineInputBorder(), fillColor: Color(0xFFFFF3E0), filled: true))),
-                const SizedBox(width: 8),
+                // تمت إزالة حقل التكلفة من هنا
                 Expanded(child: TextFormField(controller: p, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'البيع', isDense: true, border: OutlineInputBorder(), fillColor: Color(0xFFE3F2FD), filled: true))),
                 const SizedBox(width: 8),
                 Expanded(child: TextFormField(controller: m, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'الحد الأدنى', isDense: true, border: OutlineInputBorder(), fillColor: Color(0xFFFFEBEE), filled: true))),
@@ -186,7 +188,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
             children:[
               TextFormField(controller: _nameCtrl, decoration: const InputDecoration(labelText: 'اسم المادة', border: OutlineInputBorder()), validator: (v) => v!.isEmpty ? '*' : null),
               const SizedBox(height: 12),
-              Row(children:[Expanded(flex: 2, child: TextFormField(controller: _codeCtrl, decoration: const InputDecoration(labelText: 'الباركود', border: OutlineInputBorder()))), const SizedBox(width: 8), Expanded(flex: 3, child: TextFormField(controller: _tabCtrl, decoration: const InputDecoration(labelText: 'التبويب', border: OutlineInputBorder()))), const SizedBox(width: 8), Expanded(flex: 2, child: TextFormField(controller: _colCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'العمود', border: OutlineInputBorder())))]),
+              Row(children:[Expanded(flex: 2, child: TextFormField(controller: _codeCtrl, decoration: const InputDecoration(labelText: 'الباركود', border: OutlineInputBorder()))), const SizedBox(width: 8), Expanded(flex: 3, child: TextFormField(controller: _tabCtrl, decoration: const InputDecoration(labelText: 'التبويب', border: OutlineInputBorder()))), const SizedBox(width: 8), Expanded(flex: 2, child: TextFormField(controller: _colCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'رقم العمود (يبدأ من 1)', border: OutlineInputBorder()))),]),
               const SizedBox(height: 16),
 
               _buildUnitRow('الوحدة الأولى (الصغرى)', 1, _unit1Ctrl, _price1Ctrl, _minPrice1Ctrl, _costPrice1Ctrl, _cur1, (v) => setState(() => _cur1 = v!)),

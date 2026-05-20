@@ -180,7 +180,7 @@ class CustomersCubit extends Cubit<CustomersState> {
             ? currentState.customers.where((c) => selectedIds.contains(c.id)).toList()
             : currentState.customers;
 
-        await ExcelExporter.exportCustomers(toExport);
+        await ExcelExporter.exportCustomers(customers: toExport, usersMap: usersMap);
       } catch (e) {
         emit(CustomersError('فشل التصدير: $e'));
         applyFilters();

@@ -9,38 +9,32 @@ import '../models/user_model.dart';
 class AdminRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // إنشاء مستخدم جديد بطريقة آمنة لا تُخرج المدير من التطبيق
   Future<void> createUser({
     required String email,
     required String password,
     required Map<String, dynamic> userData,
   }) async {
-    // تهيئة تطبيق فايربيز مؤقت لإنشاء الحساب
     FirebaseApp secondaryApp = await Firebase.initializeApp(
       name: 'SecondaryApp',
       options: Firebase.app().options,
     );
 
     try {
-      // إنشاء الحساب في التطبيق المؤقت
       UserCredential credential = await FirebaseAuth.instanceFor(app: secondaryApp)
           .createUserWithEmailAndPassword(email: email, password: password);
 
       final uid = credential.user!.uid;
 
-      // حفظ بيانات المستخدم في Firestore
       await _firestore.collection(FirestoreKeys.users).doc(uid).set({
         FirestoreKeys.email: email,
         FirestoreKeys.isActive: true,
         ...userData,
       });
     } finally {
-      // إغلاق التطبيق المؤقت لكي لا يستهلك الذاكرة
       await secondaryApp.delete();
     }
   }
 
-  // تعديل بيانات المستخدم في Firestore
   Future<void> updateUser(String uid, Map<String, dynamic> data) async {
     await _firestore.collection(FirestoreKeys.users).doc(uid).update(data);
   }
@@ -52,5 +46,39 @@ class AdminRepository {
         .map((snapshot) => snapshot.docs
         .map((doc) => UserModel.fromFirestore(doc))
         .toList());
+  }
+
+  // حذف المستخدم نهائياً من قاعدة البيانات
+  Future<void> deleteUser(String uid) async {
+    await _firestore.collection(FirestoreKeys.users).doc(uid).delete();
+  }
+
+  // // --- إرسال رابط تغيير كلمة السر ---
+  // Future<void> sendPasswordResetEmail(String email) async {
+  //   await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+  // }
+
+  // --- فحص وجود حركات أو زبائن قبل الحذف ---
+  Future<bool> hasUserRecords(String uid) async {
+    const GetOptions serverOnly = GetOptions(source: Source.server);
+
+    try {
+      final custSnap = await _firestore.collection(FirestoreKeys.customers).where(FirestoreKeys.delegateId, isEqualTo: uid).limit(1).get(serverOnly);
+      if (custSnap.docs.isNotEmpty) return true;
+
+      final invSnap = await _firestore.collection(FirestoreKeys.invoices).where(FirestoreKeys.delegateId, isEqualTo: uid).limit(1).get(serverOnly);
+      if (invSnap.docs.isNotEmpty) return true;
+
+      final retSnap = await _firestore.collection(FirestoreKeys.returns).where(FirestoreKeys.delegateId, isEqualTo: uid).limit(1).get(serverOnly);
+      if (retSnap.docs.isNotEmpty) return true;
+
+      final recSnap = await _firestore.collection(FirestoreKeys.receipts).where(FirestoreKeys.delegateId, isEqualTo: uid).limit(1).get(serverOnly);
+      if (recSnap.docs.isNotEmpty) return true;
+
+      return false;
+    } catch (e) {
+      // في حال عدم وجود إنترنت نعتبر أن لديه بيانات كإجراء وقائي لمنع الحذف بالخطأ
+      throw Exception('يرجى الاتصال بالإنترنت للتحقق من بيانات المستخدم قبل حذفه.');
+    }
   }
 }

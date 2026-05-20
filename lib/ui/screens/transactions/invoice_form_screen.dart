@@ -28,7 +28,8 @@ import '../../widgets/print_design_widget.dart';
 
 class InvoiceFormScreen extends StatefulWidget {
   final InvoiceModel? invoiceToEdit;
-  const InvoiceFormScreen({Key? key, this.invoiceToEdit}) : super(key: key);
+  final String targetSuffix;
+  const InvoiceFormScreen({Key? key, this.invoiceToEdit, this.targetSuffix = ''}) : super(key: key);
   @override
   State<InvoiceFormScreen> createState() => _InvoiceFormScreenState();
 }
@@ -38,6 +39,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
   final _discountController = TextEditingController(text: '0');
   CustomerModel? _selectedCustomer;
   bool isViewMode = false;
+  late String _suffixToUse;
   final ScreenshotController _screenshotController = ScreenshotController();
 
   String _savedPrintName = '';
@@ -46,6 +48,8 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
 
   String _formatNum(double num) => NumberFormat('#,##0').format(num);
   String _rawNum(double num) => num == num.toInt() ? num.toInt().toString() : num.toString();
+
+  bool _canPop = false;
 
   String _cleanCustomerName(String fullName, String suffix) {
     if (suffix.isNotEmpty && fullName.startsWith(suffix)) {
@@ -65,6 +69,11 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
       _savedPrintAddress = widget.invoiceToEdit!.printAddress;
       _savedPrintPhone = widget.invoiceToEdit!.printPhone;
     }
+    final authState = context.read<AuthCubit>().state;
+    final currentUser = (authState is AuthAuthenticated) ? authState.user : null;
+
+    // إذا كانت فاتورة قديمة نأخذ بادئة صاحبها، وإذا كانت جديدة نأخذ بادئتك أنت!
+    _suffixToUse = widget.invoiceToEdit != null ? widget.targetSuffix : (currentUser?.customerSuffix ?? '');
   }
 
   // --- دالة حوار الحذف بثلاث ثوانٍ ---
@@ -99,7 +108,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
     String defaultName = _savedPrintName;
     if (defaultName.isEmpty && c != null) {
       defaultName = c.customerName;
-      if (currentUser.customerSuffix.isNotEmpty && defaultName.startsWith(currentUser.customerSuffix)) defaultName = defaultName.replaceFirst(currentUser.customerSuffix, '').trim();
+      if (_suffixToUse.isNotEmpty && defaultName.startsWith(_suffixToUse)) defaultName = defaultName.replaceFirst(_suffixToUse, '').trim();
       if (defaultName.endsWith(' - ${c.region}')) defaultName = defaultName.substring(0, defaultName.length - (' - ${c.region}').length).trim();
     } else if (defaultName.isEmpty) defaultName = widget.invoiceToEdit!.customerName;
 
@@ -156,16 +165,46 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
               List<String> pNames = state.items.map((i) => state.products.firstWhere((p) => p.id == i.productId).itemName).toList();
 
               // الحل الجذري لمنع الصورة الرمادية (MediaQuery و Material)
+
+              // --- فلتر التباين (Contrast Filter) ---
+              // لتفعيل الفلتر (لجعل الشعار والألوان داكنة جداً للطباعة):
+              // 1. احذف علامتي التعليق /* و */
+              // 2. إذا أردت إيقافه، أعد علامتي التعليق
+
+              /*
+              const ColorFilter contrastFilter = ColorFilter.matrix([
+                1.5, 0, 0, 0, -64, // الأحمر
+                0, 1.5, 0, 0, -64, // الأخضر
+                0, 0, 1.5, 0, -64, // الأزرق
+                0, 0, 0, 1, 0,     // الشفافية
+              ]);
+              */
+
               final widgetToCapture = MediaQuery(
                 data: const MediaQueryData(),
                 child: Theme(
                   data: ThemeData.light(),
                   child: Directionality(
                     textDirection: TextDirection.rtl,
+
+                    /*
+                  // لتفعيل الفلتر، قم بفك التعليق عن ColorFiltered وضع الـ Material بداخله
+                  child: ColorFiltered(
+                    colorFilter: contrastFilter,
+                    child: Material(
+                      color: Colors.white,
+                      child: PrintDesignWidget( ... ),
+                    ),
+                  ),
+                  */
+
+                    // الكود الافتراضي بدون فلتر (قم بتعليقه إذا فعلت الكود أعلاه)
+
                     child: Material(
                       color: Colors.white,
                       child: PrintDesignWidget(
                         type: TransactionType.invoice,
+                        paymentMethod: widget.invoiceToEdit!.paymentMethod,
                         docNumber: widget.invoiceToEdit!.delegateInvoiceNumber.toString().padLeft(5, '0'),
                         date: widget.invoiceToEdit!.invoiceDate,
                         delegateName: delegateCtrl.text,
@@ -221,7 +260,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children:[
-          const Text('المالك الأمين للبهارات', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+          const Text('الملك الأمين للبهارات', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
           Text('فاتورة مبيعات رقم: ${widget.invoiceToEdit?.delegateInvoiceNumber.toString().padLeft(5, '0') ?? ''}'),
           const Divider(thickness: 2),
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children:[Text('الزبون: $cName'), Text('التاريخ: ${DateFormat('yyyy-MM-dd').format(DateTime.now())}')]),
@@ -399,9 +438,32 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
 
     return BlocProvider(
       create: (context) => InvoiceFormCubit(context.read<CustomersRepository>(), context.read<ProductsRepository>(), context.read<TransactionsRepository>(), currentUser)..initData(invoiceToEdit: widget.invoiceToEdit),
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(isViewMode ? 'عرض الفاتورة #${widget.invoiceToEdit!.delegateInvoiceNumber.toString().padLeft(5, '0')}' : (widget.invoiceToEdit != null ? 'تعديل الفاتورة' : 'إنشاء فاتورة')),
+      child: PopScope(
+        canPop: _canPop, // false بالوضع الطبيعي
+        onPopInvoked: (didPop) {
+          if (didPop) return;
+          // إشعار لطيف للمندوب ليستخدم الزر الصحيح
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('يرجى استخدام سهم الرجوع في أعلى الشاشة.'), duration: Duration(seconds: 1)));
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            // زر رجوع مخصص نتحكم به
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back), // السهم يتجه تلقائياً حسب اللغة
+              onPressed: () {
+                setState(() => _canPop = true); // نسمح بالخروج
+                Future.delayed(const Duration(milliseconds: 50), () {
+                  if (context.mounted) context.pop(); // نخرج بأمان
+                });
+              },
+            ),
+            title: Text(isViewMode ? 'عرض الفاتورة #${widget.invoiceToEdit!.delegateInvoiceNumber.toString().padLeft(5, '0')}' : (widget.invoiceToEdit != null ? 'تعديل الفاتورة' : 'إنشاء فاتورة مبيعات')),
+
+            // تم استبدال ما فوق بهذه الاسطر الثلاثة لتطبيق زر اعلى الصفحة
+            // Scaffold(
+            //   appBar: AppBar(
+            //     title: Text(isViewMode ? 'عرض الفاتورة #${widget.invoiceToEdit!.delegateInvoiceNumber.toString().padLeft(5, '0')}' : (widget.invoiceToEdit != null ? 'تعديل الفاتورة' : 'إنشاء فاتورة')),
+
           centerTitle: true,
           backgroundColor: isViewMode ? Colors.grey.shade700 : Colors.blue.shade700,
           foregroundColor: Colors.white,
@@ -434,6 +496,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
           listener: (context, state) {
             if (state is InvoiceFormSuccess) {
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تمت العملية بنجاح'), backgroundColor: Colors.green));
+              setState(() => _canPop = true);
               context.pop(); // يغلق الشاشة فوراً
             } else if (state is InvoiceFormError) {
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message), backgroundColor: Colors.red));
@@ -481,18 +544,27 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                               Expanded(
                                 flex: 2,
                                 child: Autocomplete<CustomerModel>(
-                                  initialValue: TextEditingValue(text: _selectedCustomer != null ? _cleanCustomerName(_selectedCustomer!.customerName, currentUser.customerSuffix) : (isViewMode ? _cleanCustomerName(widget.invoiceToEdit!.customerName, currentUser.customerSuffix) : '')),
-                                  displayStringForOption: (c) => _cleanCustomerName(c.customerName, currentUser.customerSuffix),
+                                  initialValue: TextEditingValue(text: _selectedCustomer != null ? _cleanCustomerName(_selectedCustomer!.customerName, _suffixToUse) : (isViewMode ? _cleanCustomerName(widget.invoiceToEdit!.customerName, _suffixToUse) : '')),
+                                  displayStringForOption: (c) => _cleanCustomerName(c.customerName, _suffixToUse),
                                   optionsBuilder: (textEditingValue) {
                                     if (isViewMode) return const Iterable<CustomerModel>.empty();
                                     if (textEditingValue.text.isEmpty) return state.myCustomers;
-                                    return state.myCustomers.where((c) => _cleanCustomerName(c.customerName, currentUser.customerSuffix).toLowerCase().contains(textEditingValue.text.toLowerCase()));
+                                    return state.myCustomers.where((c) => _cleanCustomerName(c.customerName, _suffixToUse).toLowerCase().contains(textEditingValue.text.toLowerCase()));
                                   },
                                   onSelected: (c) => _selectedCustomer = c,
                                   fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
                                     return TextFormField(
                                       controller: controller, focusNode: focusNode, readOnly: isViewMode,
-                                      decoration: InputDecoration(labelText: 'الزبون (اتركه فارغاً للنقدي)', border: const OutlineInputBorder(), isDense: true, filled: isViewMode),
+                                      decoration: InputDecoration(labelText: 'الزبون (اتركه فارغاً للنقدي)', border: const OutlineInputBorder(), isDense: true, filled: isViewMode,
+                                          // إضافة زر مسح الزبون هنا
+                                          suffixIcon: isViewMode ? null : IconButton(
+                                          icon: const Icon(Icons.clear, size: 20),
+                                      onPressed: () {
+                                        controller.clear(); // مسح النص
+                                        setState(() => _selectedCustomer = null); // إلغاء التحديد برمجياً
+                                      },
+                                    ),
+                                      ),
                                     );
                                   },
                                 ),
@@ -506,7 +578,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                                   value: state.paymentMethod == 'gift' ? 'cash' : state.paymentMethod, // حماية من أي خطأ
                                   items: const[
                                     DropdownMenuItem(value: 'cash', child: Text('نقدية')),
-                                    DropdownMenuItem(value: 'credit', child: Text('آجلة (ذمم)'))
+                                    DropdownMenuItem(value: 'credit', child: Text('آجلة'))
                                   ],
                                   onChanged: isViewMode ? null : (val) => cubit.updatePaymentMethod(val!),
                                 ),
@@ -614,7 +686,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                                 cubit.submitInvoice(selectedCustomer: _selectedCustomer, note: _noteController.text.trim(), oldInvoice: widget.invoiceToEdit);
                               },
                               style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade700, padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12)),
-                              child: const Text('حفظ واعتماد', style: TextStyle(color: Colors.white, fontSize: 16)),
+                              child: const Text('حفظ الفاتورة', style: TextStyle(color: Colors.white, fontSize: 16)),
                             )
                         ],
                       ),
@@ -627,6 +699,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
           },
         ),
       ),
+            ),
     );
   }
 

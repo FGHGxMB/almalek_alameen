@@ -14,6 +14,7 @@ import '../../../core/constants/app_routes.dart';
 import '../../widgets/common/permission_guard.dart';
 import '../../widgets/transaction_filters_panel.dart';
 import '../../../data/repositories/customers_repository.dart';
+import '../../../data/repositories/products_repository.dart';
 
 class TransactionsScreen extends StatelessWidget {
   const TransactionsScreen({Key? key}) : super(key: key);
@@ -25,7 +26,7 @@ class TransactionsScreen extends StatelessWidget {
     final currentUser = authState.user;
 
     return BlocProvider(
-      create: (context) => TransactionsCubit(context.read<TransactionsRepository>(), context.read<CustomersRepository>(), currentUser),
+      create: (context) => TransactionsCubit(context.read<TransactionsRepository>(), context.read<CustomersRepository>(), context.read<ProductsRepository>(), currentUser),
       child: Scaffold(
         appBar: AppBar(
           title: BlocBuilder<TransactionsCubit, TransactionsState>(
@@ -45,7 +46,7 @@ class TransactionsScreen extends StatelessWidget {
                         IconButton(icon: const Icon(Icons.select_all), onPressed: () { if (state is TransactionsLoaded) cubit.selectAll(state.transactions); }),
                       if (!cubit.isSelectionMode)
                         IconButton(
-                          icon: Icon(Icons.filter_alt, color: cubit.hasActiveFilters ? Colors.orangeAccent : Colors.white),
+                          icon: Icon(Icons.filter_alt, color: cubit.hasActiveFilters ? Colors.orangeAccent : Colors.grey),
                           onPressed: () {
                             showModalBottomSheet(
                               context: context,
@@ -106,11 +107,11 @@ class TransactionsScreen extends StatelessWidget {
                                 cubit.toggleSelection(t.id);
                               } else {
                                 if (t.type == TransactionType.invoice) {
-                                  context.push(AppRoutes.invoiceForm, extra: t.originalDoc);
+                                  context.push(AppRoutes.invoiceForm, extra: {'doc': t.originalDoc, 'suffix': t.delegateSuffix});
                                 } else if (t.type == TransactionType.returnDoc) {
-                                  context.push(AppRoutes.returnForm, extra: t.originalDoc);
+                                  context.push(AppRoutes.returnForm, extra: {'doc': t.originalDoc, 'suffix': t.delegateSuffix});
                                 } else if (t.type == TransactionType.receipt) {
-                                  context.push(AppRoutes.receiptForm, extra: t.originalDoc); // تم إضافة فتح السند!
+                                  context.push(AppRoutes.receiptForm, extra: {'doc': t.originalDoc, 'suffix': t.delegateSuffix});
                                 }
                               }
                             },
@@ -127,9 +128,9 @@ class TransactionsScreen extends StatelessWidget {
         ),
         floatingActionButton: Builder(
             builder: (context) {
-              final canCreateInvoice = currentUser.permissions.invoiceCreate || currentUser.permissions.invoiceCreateMonitored;
-              final canCreateReturn = currentUser.permissions.returnCreate || currentUser.permissions.returnCreateMonitored;
-              final canCreateReceipt = currentUser.permissions.receiptCreate || currentUser.permissions.receiptCreateMonitored;
+              final canCreateInvoice = currentUser.permissions.invoiceCreate;
+              final canCreateReturn = currentUser.permissions.returnCreate;
+              final canCreateReceipt = currentUser.permissions.receiptCreate;
 
               if (!canCreateInvoice && !canCreateReturn && !canCreateReceipt) return const SizedBox.shrink();
 

@@ -3,6 +3,8 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:spice_app/data/models/product_model.dart';
+import 'package:spice_app/data/repositories/products_repository.dart';
 import 'transactions_state.dart';
 import '../../data/repositories/transactions_repository.dart';
 import '../../data/repositories/customers_repository.dart';
@@ -64,6 +66,7 @@ class TransactionFilters {
 class TransactionsCubit extends Cubit<TransactionsState> {
   final TransactionsRepository _repository;
   final CustomersRepository _customersRepo;
+  final ProductsRepository _productsRepo;
   final UserModel currentUser;
 
   StreamSubscription? _invoicesSub;
@@ -90,7 +93,7 @@ class TransactionsCubit extends Cubit<TransactionsState> {
           filters.minAmount != null || filters.maxAmount != null || filters.fromDate != null || filters.toDate != null ||
           filters.selectedCustomerId != null || filters.filterCashOnly || (filters.selectedDelegates.length > 1);
 
-  TransactionsCubit(this._repository, this._customersRepo, this.currentUser) : super(TransactionsLoading()) {
+  TransactionsCubit(this._repository, this._customersRepo, this._productsRepo, this.currentUser) : super(TransactionsLoading()) {
     _initData();
   }
 
@@ -250,7 +253,7 @@ class TransactionsCubit extends Cubit<TransactionsState> {
 
   Future<void> exportDataToExcel() async {
     try {
-      List<InvoiceModel> invs =[]; List<ReturnModel> rets =[]; List<ReceiptModel> recs = [];
+      List<InvoiceModel> invs = []; List<ReturnModel> rets =[]; List<ReceiptModel> recs =[];
       List<UnifiedTransaction> source = _allUnified;
       if (state is TransactionsLoaded) {
         source = (state as TransactionsLoaded).transactions;
@@ -262,7 +265,20 @@ class TransactionsCubit extends Cubit<TransactionsState> {
         if (t.type == TransactionType.returnDoc) rets.add(t.originalDoc);
         if (t.type == TransactionType.receipt) recs.add(t.originalDoc);
       }
-      await ExcelExporter.exportTransactions(invoices: invs, returns: rets, receipts: recs);
+
+      // جلب المواد محلياً لتبديل الأكواد
+      final productsList = await _productsRepo.getLocalProducts();
+      final Map<String, ProductModel> productsMap = { for (var p in productsList) p.id: p };
+      final Map<String, CustomerModel> customersMap = { for (var c in allCustomers) c.id: c };
+
+      await ExcelExporter.exportTransactions(
+        invoices: invs,
+        returns: rets,
+        receipts: recs,
+        usersMap: usersMap,
+        customersMap: customersMap, // تمرير خريطة الزبائن
+        productsMap: productsMap,   // تمرير خريطة المواد
+      );
     } catch (e) { emit(TransactionsError('فشل التصدير: $e')); applyFilters(); }
   }
 

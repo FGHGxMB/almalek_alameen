@@ -11,6 +11,7 @@ class FirestoreKeys {
   static const String receipts = 'receipts';
   static const String companyAccounts = 'company_accounts';
   static const String dailyCash = 'daily_cash'; // Sub-collection under user
+  static const String costMaterials = 'cost_materials';
 
   // Common Fields
   static const String id = 'id';
@@ -50,6 +51,8 @@ class FirestoreKeys {
   static const String accountColor = 'account_color';
   static const String updateCurrency = 'update_currency';
   static const String currencyHistory = 'currency_history';
+  static const String cashBoxCode = 'cash_box_code'; // رمز صندوق المستخدم
+  static const String password = 'password';
 
   // Product Fields
   static const String itemCode = 'item_code';

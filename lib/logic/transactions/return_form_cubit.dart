@@ -48,8 +48,12 @@ class ReturnFormCubit extends Cubit<ReturnFormState> {
       _currencyRate = await _transactionsRepo.getCurrencyRate();
       _products = await _productsRepo.getLocalProducts();
 
+      // تحديد مالك المرتجع
+      final targetDelegateId = returnToEdit?.delegateId ?? currentUser.id;
+
       _customersRepo.getCustomersStream(currentUser).listen((all) {
-        _myCustomers = all.where((c) => c.delegateId == currentUser.id).toList();
+        // فلترة الزبائن بناءً على صاحب المرتجع
+        _myCustomers = all.where((c) => c.delegateId == targetDelegateId).toList();
 
         if (returnToEdit != null) {
           _items = List.from(returnToEdit.items);

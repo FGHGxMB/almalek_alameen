@@ -68,14 +68,22 @@ class SettingsCubit extends Cubit<SettingsState> {
   }
 
   Future<void> updatePassword(String newPassword) async {
-    final currentState = state; // حفظ الحالة للرجوع إليها
+    final currentState = state;
     emit(SettingsLoading());
     try {
       final user = _auth.currentUser;
       if (user == null) throw Exception('المستخدم غير مسجل الدخول');
+
+      // 1. تغييرها في المصادقة الأساسية لفايربيز
       await user.updatePassword(newPassword);
+
+      // 2. تحديثها في قاعدة البيانات لكي يراها المدير في شاشة التعديل
+      await _firestore.collection(FirestoreKeys.users).doc(user.uid).update({
+        FirestoreKeys.password: newPassword,
+      });
+
       emit(SettingsSuccess('تم تغيير كلمة المرور بنجاح'));
-      if (currentState is SettingsLoaded) emit(currentState); // إرجاع الواجهة
+      if (currentState is SettingsLoaded) emit(currentState);
     } on FirebaseAuthException catch (e) {
       emit(SettingsError(e.message ?? 'حدث خطأ في المصادقة'));
       if (currentState is SettingsLoaded) emit(currentState);

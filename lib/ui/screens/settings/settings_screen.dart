@@ -78,7 +78,7 @@ class SettingsScreen extends StatelessWidget {
                           ],
                         ),
                         const Divider(height: 32),
-                        const Text('البريد الإلكتروني الحالي:', style: TextStyle(color: Colors.grey)),
+                        const Text('البريد الإلكتروني:', style: TextStyle(color: Colors.grey)),
                         Text(user.email, style: const TextStyle(fontSize: 16)),
                       ],
                     ),
@@ -95,6 +95,51 @@ class SettingsScreen extends StatelessWidget {
                 const Divider(height: 32),
 
                 // قسم الإدارة (يظهر فقط للأدمن)
+                // 1. سعر الدولار الحي وسجله (مستقل ويظهر لمن لديه صلاحية updateCurrency)
+                PermissionGuard(
+                  permissionCheck: (perms) => perms.updateCurrency,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children:[
+                      const Text('العملات', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.blueGrey)),
+                      const SizedBox(height: 8),
+                      ListTile(
+                        tileColor: Colors.teal.shade50,
+                        leading: const Icon(Icons.attach_money, color: Colors.teal),
+                        title: Row(
+                          children:[
+                            const Text('سعر الدولار: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                            if (state is SettingsLoaded)
+                              Text('${state.currencyRate}', style: const TextStyle(color: Colors.teal, fontWeight: FontWeight.bold, fontSize: 18)),
+                            if (state is SettingsLoaded && !state.isConfigSynced) ...[
+                              const SizedBox(width: 8),
+                              const Icon(Icons.cloud_off, color: Colors.orange, size: 18),
+                            ]
+                          ],
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children:[
+                            IconButton(
+                              icon: const Icon(Icons.history, color: Colors.blueGrey),
+                              tooltip: 'سجل التغييرات',
+                              onPressed: () => context.push(AppRoutes.currencyHistory),
+                            ),
+                            const Icon(Icons.edit, size: 20, color: Colors.teal),
+                          ],
+                        ),
+                        onTap: () {
+                          if (state is SettingsLoaded) {
+                            _showEditCurrencyDialog(context, cubit, state.currencyRate, user.accountName);
+                          }
+                        },
+                      ),
+                      const Divider(height: 32),
+                    ],
+                  ),
+                ),
+
+                // 2. قسم الإدارة والنظام (يظهر فقط للأدمن)
                 PermissionGuard(
                   permissionCheck: (perms) => perms.adminAccess,
                   child: Column(
@@ -103,58 +148,13 @@ class SettingsScreen extends StatelessWidget {
                       const Text('الإدارة والنظام', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.teal)),
                       const SizedBox(height: 8),
 
-                      // 1. سعر الدولار الحي
-                      if (state is SettingsLoaded)
-                      // 1. سعر الدولار الحي وسجله (يظهر لمن لديه صلاحية updateCurrency)
-                        PermissionGuard(
-                          permissionCheck: (perms) => perms.updateCurrency,
-                          child: Column(
-                            children:[
-                              ListTile(
-                                tileColor: Colors.teal.shade50,
-                                leading: const Icon(Icons.attach_money, color: Colors.teal),
-                                title: Row(
-                                  children:[
-                                    const Text('سعر الدولار: ', style: TextStyle(fontWeight: FontWeight.bold)),
-                                    if (state is SettingsLoaded)
-                                      Text('${state.currencyRate}', style: const TextStyle(color: Colors.teal, fontWeight: FontWeight.bold, fontSize: 18)),
-                                    if (state is SettingsLoaded && !state.isConfigSynced) ...[
-                                      const SizedBox(width: 8),
-                                      const Icon(Icons.cloud_off, color: Colors.orange, size: 18),
-                                    ]
-                                  ],
-                                ),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children:[
-                                    IconButton(
-                                      icon: const Icon(Icons.history, color: Colors.blueGrey),
-                                      tooltip: 'سجل التغييرات',
-                                      onPressed: () => context.push(AppRoutes.currencyHistory),
-                                    ),
-                                    const Icon(Icons.edit, size: 20, color: Colors.teal),
-                                  ],
-                                ),
-                                onTap: () {
-                                  if (state is SettingsLoaded) {
-                                    _showEditCurrencyDialog(context, cubit, state.currencyRate, user.accountName); // تمرير اسم المستخدم
-                                  }
-                                },
-                              ),
-                              const SizedBox(height: 8),
-                            ],
-                          ),
-                        ),
-                      const SizedBox(height: 8),
-
-                      // 2. المعلومات الأساسية
+                      // المعلومات الأساسية
                       ListTile(
                         tileColor: Colors.teal.shade50,
                         leading: const Icon(Icons.info_outline, color: Colors.teal),
                         title: Row(
                           children:[
-                            const Text('المعلومات الأساسية للمؤسسة'),
-                            // عرض الغيمة البرتقالية إذا كانت الإعدادات قيد الرفع
+                            const Text('المعلومات الأساسية للشركة'),
                             if (state is SettingsLoaded && !state.isConfigSynced) ...[
                               const SizedBox(width: 8),
                               const Icon(Icons.cloud_off, color: Colors.orange, size: 16),
@@ -166,7 +166,7 @@ class SettingsScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
 
-                      // 3. إدارة المواد
+                      // إدارة المواد
                       ListTile(
                         tileColor: Colors.teal.shade50,
                         leading: const Icon(Icons.inventory_2_outlined, color: Colors.teal),
@@ -184,11 +184,11 @@ class SettingsScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
 
-                      // 4. لوحة المستخدمين (الأدمن)
+                      // لوحة المستخدمين (الأدمن)
                       ListTile(
                         tileColor: Colors.teal.shade50,
                         leading: const Icon(Icons.admin_panel_settings, color: Colors.teal),
-                        title: const Text('إدارة الصلاحيات والمندوبين', style: TextStyle(color: Colors.teal, fontWeight: FontWeight.bold)),
+                        title: const Text('إدارة حسابات المستخدمين', style: TextStyle(color: Colors.teal, fontWeight: FontWeight.bold)),
                         trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.teal),
                         onTap: () => context.push(AppRoutes.admin),
                       ),

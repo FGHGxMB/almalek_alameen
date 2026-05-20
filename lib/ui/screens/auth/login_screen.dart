@@ -52,13 +52,18 @@ class _LoginScreenState extends State<LoginScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children:[
-                    const Icon(Icons.shopping_cart_outlined, size: 100, color: Colors.teal),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'نظام التوزيع',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                    Image.asset(
+                      'assets/print_logo.png',
+                      width: 220,
+                      height: 220,
+                      fit: BoxFit.contain, // لضمان عدم تشوه الشعار
                     ),
+                    const SizedBox(height: 24),
+                    // const Text(
+                    //   'تطبيق الملك الأمين',
+                    //   textAlign: TextAlign.center,
+                    //   style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                    // ),
                     const SizedBox(height: 40),
                     TextFormField(
                       controller: _emailController,

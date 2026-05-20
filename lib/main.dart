@@ -46,7 +46,6 @@ import 'logic/products_management/products_management_cubit.dart';
 // --- الشاشات (Screens) ---
 import 'ui/screens/auth/login_screen.dart';
 import 'ui/screens/main_layout/main_layout.dart';
-import 'ui/screens/settings/currency_history_screen.dart';
 import 'ui/screens/transactions/invoice_form_screen.dart';
 import 'ui/screens/transactions/return_form_screen.dart';
 import 'ui/screens/transactions/receipt_form_screen.dart';
@@ -55,8 +54,11 @@ import 'ui/screens/customers/customer_form_screen.dart';
 import 'ui/screens/admin/admin_screen.dart';
 import 'ui/screens/admin/user_edit_screen.dart';
 import 'ui/screens/settings/basic_info_screen.dart';
+import 'ui/screens/settings/currency_history_screen.dart'; // مسار سجل الدولار
 import 'ui/screens/products_management/products_management_screen.dart';
 import 'ui/screens/products_management/product_form_screen.dart';
+
+import 'logic/admin/admin_cubit.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -68,7 +70,6 @@ void main() async {
   final firestoreService = FirestoreService();
   await firestoreService.enableNetworkAndPersistence();
 
-  // تهيئة التخزين المحلي وقاعدة بيانات Drift
   final localStorage = await LocalStorage.init();
   final appDatabase = AppDatabase();
   final productsCache = ProductsCache(appDatabase, localStorage);
@@ -140,22 +141,31 @@ class MyApp extends StatelessWidget {
       GoRoute(
         path: AppRoutes.receiptForm,
         builder: (context, state) {
-          final receiptDoc = state.extra as ReceiptModel?;
-          return ReceiptFormScreen(receiptToEdit: receiptDoc);
+          final extra = state.extra;
+          ReceiptModel? doc; String suffix = '';
+          if (extra is ReceiptModel) doc = extra;
+          else if (extra is Map) { doc = extra['doc']; suffix = extra['suffix'] ?? ''; }
+          return ReceiptFormScreen(receiptToEdit: doc, targetSuffix: suffix);
         },
       ),
       GoRoute(
         path: AppRoutes.invoiceForm,
         builder: (context, state) {
-          final invoice = state.extra as InvoiceModel?;
-          return InvoiceFormScreen(invoiceToEdit: invoice);
+          final extra = state.extra;
+          InvoiceModel? doc; String suffix = '';
+          if (extra is InvoiceModel) doc = extra;
+          else if (extra is Map) { doc = extra['doc']; suffix = extra['suffix'] ?? ''; }
+          return InvoiceFormScreen(invoiceToEdit: doc, targetSuffix: suffix);
         },
       ),
       GoRoute(
         path: AppRoutes.returnForm,
         builder: (context, state) {
-          final returnDoc = state.extra as ReturnModel?;
-          return ReturnFormScreen(returnToEdit: returnDoc);
+          final extra = state.extra;
+          ReturnModel? doc; String suffix = '';
+          if (extra is ReturnModel) doc = extra;
+          else if (extra is Map) { doc = extra['doc']; suffix = extra['suffix'] ?? ''; }
+          return ReturnFormScreen(returnToEdit: doc, targetSuffix: suffix);
         },
       ),
       GoRoute(
@@ -168,7 +178,12 @@ class MyApp extends StatelessWidget {
           final extra = state.extra as Map<String, dynamic>? ?? {};
           final user = extra['user'] as UserModel?;
           final allUsers = extra['allUsers'] as List<UserModel>? ??[];
-          return UserEditScreen(user: user, allUsers: allUsers);
+
+          // التعديل هنا: تغليف الشاشة بـ BlocProvider لكي تتمكن من استخدام دالة الحذف
+          return BlocProvider(
+            create: (context) => AdminCubit(context.read<AdminRepository>()),
+            child: UserEditScreen(user: user, allUsers: allUsers),
+          );
         },
       ),
       GoRoute(
@@ -197,6 +212,10 @@ class MyApp extends StatelessWidget {
         builder: (context, state) => const BasicInfoScreen(),
       ),
       GoRoute(
+        path: AppRoutes.currencyHistory,
+        builder: (context, state) => const CurrencyHistoryScreen(),
+      ),
+      GoRoute(
         path: AppRoutes.productsManagement,
         builder: (context, state) => const ProductsManagementScreen(),
       ),
@@ -215,10 +234,6 @@ class MyApp extends StatelessWidget {
             ),
           );
         },
-      ),
-      GoRoute(
-        path: AppRoutes.currencyHistory,
-        builder: (context, state) => const CurrencyHistoryScreen(),
       ),
     ],
     redirect: (context, state) {
@@ -254,7 +269,7 @@ class MyApp extends StatelessWidget {
             _router.refresh();
           },
           child: MaterialApp.router(
-            title: 'نظام توزيع البهارات',
+            title: 'الملك الأمين',
             debugShowCheckedModeBanner: false,
             localizationsDelegates: const[
               GlobalMaterialLocalizations.delegate,
@@ -268,7 +283,7 @@ class MyApp extends StatelessWidget {
             theme: ThemeData(
               primarySwatch: Colors.teal,
               useMaterial3: true,
-              fontFamily: 'Tajawal', // تأكد من إضافة الخط في pubspec.yaml لاحقاً
+              fontFamily: 'Tajawal',
             ),
             routerConfig: _router,
           ),

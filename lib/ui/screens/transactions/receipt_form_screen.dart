@@ -24,7 +24,8 @@ import '../../widgets/print_design_widget.dart';
 
 class ReceiptFormScreen extends StatefulWidget {
   final ReceiptModel? receiptToEdit;
-  const ReceiptFormScreen({Key? key, this.receiptToEdit}) : super(key: key);
+  final String targetSuffix;
+  const ReceiptFormScreen({Key? key, this.receiptToEdit, this.targetSuffix = ''}) : super(key: key);
 
   @override
   State<ReceiptFormScreen> createState() => _ReceiptFormScreenState();
@@ -36,6 +37,7 @@ class _ReceiptFormScreenState extends State<ReceiptFormScreen> {
   final _noteController = TextEditingController();
   CustomerModel? _selectedCustomer;
   bool isViewMode = false;
+  late String _suffixToUse;
   final ScreenshotController _screenshotController = ScreenshotController();
 
   String _savedPrintName = '';
@@ -44,6 +46,8 @@ class _ReceiptFormScreenState extends State<ReceiptFormScreen> {
 
   String _formatNum(double num) => NumberFormat('#,##0').format(num);
   String _rawNum(double num) => num == num.toInt() ? num.toInt().toString() : num.toString();
+
+  bool _canPop = false;
 
   String _cleanCustomerName(String fullName, String suffix) {
     if (suffix.isNotEmpty && fullName.startsWith(suffix)) {
@@ -63,6 +67,11 @@ class _ReceiptFormScreenState extends State<ReceiptFormScreen> {
       _savedPrintAddress = widget.receiptToEdit!.printAddress;
       _savedPrintPhone = widget.receiptToEdit!.printPhone;
     }
+    final authState = context.read<AuthCubit>().state;
+    final currentUser = (authState is AuthAuthenticated) ? authState.user : null;
+
+    // إذا كانت فاتورة قديمة نأخذ بادئة صاحبها، وإذا كانت جديدة نأخذ بادئتك أنت!
+    _suffixToUse = widget.receiptToEdit != null ? widget.targetSuffix : (currentUser?.customerSuffix ?? '');
   }
 
   @override
@@ -106,7 +115,7 @@ class _ReceiptFormScreenState extends State<ReceiptFormScreen> {
     String defaultName = _savedPrintName;
     if (defaultName.isEmpty && c != null) {
       defaultName = c.customerName;
-      if (currentUser.customerSuffix.isNotEmpty && defaultName.startsWith(currentUser.customerSuffix)) defaultName = defaultName.replaceFirst(currentUser.customerSuffix, '').trim();
+      if (_suffixToUse.isNotEmpty && defaultName.startsWith(_suffixToUse)) defaultName = defaultName.replaceFirst(_suffixToUse, '').trim();
       if (defaultName.endsWith(' - ${c.region}')) defaultName = defaultName.substring(0, defaultName.length - (' - ${c.region}').length).trim();
     }
 
@@ -163,16 +172,47 @@ class _ReceiptFormScreenState extends State<ReceiptFormScreen> {
                 setState(() { _savedPrintName = nameCtrl.text.trim(); _savedPrintAddress = addressCtrl.text.trim(); _savedPrintPhone = phoneCtrl.text.trim(); });
               }
 
+              // الحل الجذري لمنع الصورة الرمادية (MediaQuery و Material)
+
+              // --- فلتر التباين (Contrast Filter) ---
+              // لتفعيل الفلتر (لجعل الشعار والألوان داكنة جداً للطباعة):
+              // 1. احذف علامتي التعليق /* و */
+              // 2. إذا أردت إيقافه، أعد علامتي التعليق
+
+              /*
+              const ColorFilter contrastFilter = ColorFilter.matrix([
+                1.5, 0, 0, 0, -64, // الأحمر
+                0, 1.5, 0, 0, -64, // الأخضر
+                0, 0, 1.5, 0, -64, // الأزرق
+                0, 0, 0, 1, 0,     // الشفافية
+              ]);
+              */
+
               final widgetToCapture = MediaQuery(
                 data: const MediaQueryData(),
                 child: Theme(
                   data: ThemeData.light(),
                   child: Directionality(
                     textDirection: TextDirection.rtl,
+
+                    /*
+                  // لتفعيل الفلتر، قم بفك التعليق عن ColorFiltered وضع الـ Material بداخله
+                  child: ColorFiltered(
+                    colorFilter: contrastFilter,
+                    child: Material(
+                      color: Colors.white,
+                      child: PrintDesignWidget( ... ),
+                    ),
+                  ),
+                  */
+
+                    // الكود الافتراضي بدون فلتر (قم بتعليقه إذا فعلت الكود أعلاه)
+
                     child: Material(
                       color: Colors.white,
                       child: PrintDesignWidget(
                         type: TransactionType.receipt,
+                        paymentMethod: "نقدي",
                         docNumber: widget.receiptToEdit!.delegateReceiptNumber.toString().padLeft(5, '0'),
                         date: widget.receiptToEdit!.date,
                         delegateName: delegateCtrl.text,
@@ -219,7 +259,7 @@ class _ReceiptFormScreenState extends State<ReceiptFormScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children:[
-          const Text('المالك الأمين للبهارات', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+          const Text('الملك الأمين للبهارات', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
           Text('سند قبض رقم: ${widget.receiptToEdit?.delegateReceiptNumber.toString().padLeft(5, '0') ?? ''}'),
           const Divider(thickness: 2),
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children:[Text('الزبون: $cName'), Text('التاريخ: ${DateFormat('yyyy-MM-dd').format(DateTime.now())}')]),
@@ -263,8 +303,25 @@ class _ReceiptFormScreenState extends State<ReceiptFormScreen> {
         context.read<TransactionsRepository>(),
         currentUser,
       )..initData(receiptToEdit: widget.receiptToEdit),
-      child: Scaffold(
+      child: PopScope(
+        canPop: _canPop, // false بالوضع الطبيعي
+        onPopInvoked: (didPop) {
+          if (didPop) return;
+          // إشعار لطيف للمندوب ليستخدم الزر الصحيح
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('يرجى استخدام سهم الرجوع في أعلى الشاشة.'), duration: Duration(seconds: 1)));
+        },
+        child: Scaffold(
         appBar: AppBar(
+          // زر رجوع مخصص نتحكم به
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back), // السهم يتجه تلقائياً حسب اللغة
+            onPressed: () {
+              setState(() => _canPop = true); // نسمح بالخروج
+              Future.delayed(const Duration(milliseconds: 50), () {
+                if (context.mounted) context.pop(); // نخرج بأمان
+              });
+            },
+          ),
           title: Text(isViewMode ? 'عرض سند قبض #${widget.receiptToEdit!.delegateReceiptNumber.toString().padLeft(5, '0')}' : (widget.receiptToEdit != null ? 'تعديل السند' : 'إنشاء سند قبض')),
           centerTitle: true,
           backgroundColor: isViewMode ? Colors.grey.shade700 : Colors.green.shade600,
@@ -298,6 +355,7 @@ class _ReceiptFormScreenState extends State<ReceiptFormScreen> {
           listener: (context, state) {
             if (state is ReceiptFormSuccess) {
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تمت العملية بنجاح'), backgroundColor: Colors.green));
+              setState(() => _canPop = true);
               context.pop();
             } else if (state is ReceiptFormError) {
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message), backgroundColor: Colors.red));
@@ -327,12 +385,12 @@ class _ReceiptFormScreenState extends State<ReceiptFormScreen> {
                     children:[
                       // بحث الزبائن الذكي (Autocomplete)
                       Autocomplete<CustomerModel>(
-                        initialValue: TextEditingValue(text: _selectedCustomer != null ? _cleanCustomerName(_selectedCustomer!.customerName, currentUser.customerSuffix) : ''),
-                        displayStringForOption: (c) => _cleanCustomerName(c.customerName, currentUser.customerSuffix),
+                        initialValue: TextEditingValue(text: _selectedCustomer != null ? _cleanCustomerName(_selectedCustomer!.customerName, _suffixToUse) : ''),
+                        displayStringForOption: (c) => _cleanCustomerName(c.customerName, _suffixToUse),
                         optionsBuilder: (textEditingValue) {
                           if (isViewMode) return const Iterable<CustomerModel>.empty(); // في العرض نعطل القائمة
                           if (textEditingValue.text.isEmpty) return state.customers;
-                          return state.customers.where((c) => _cleanCustomerName(c.customerName, currentUser.customerSuffix).toLowerCase().contains(textEditingValue.text.toLowerCase()));
+                          return state.customers.where((c) => _cleanCustomerName(c.customerName, _suffixToUse).toLowerCase().contains(textEditingValue.text.toLowerCase()));
                         },
                         onSelected: (c) => _selectedCustomer = c,
                         fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
@@ -401,7 +459,7 @@ class _ReceiptFormScreenState extends State<ReceiptFormScreen> {
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             backgroundColor: Colors.green.shade700,
                           ),
-                          child: const Text('حفظ السند واعتماده', style: TextStyle(fontSize: 18, color: Colors.white)),
+                          child: const Text('حفظ السند', style: TextStyle(fontSize: 18, color: Colors.white)),
                         ),
                     ],
                   ),
@@ -412,6 +470,7 @@ class _ReceiptFormScreenState extends State<ReceiptFormScreen> {
           },
         ),
       ),
+          ),
     );
   }
 }

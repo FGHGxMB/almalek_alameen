@@ -80,7 +80,7 @@ class TransactionCard extends StatelessWidget {
                         decoration: BoxDecoration(color: _hexToColor(transaction.delegateColor), borderRadius: BorderRadius.circular(4)),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
-                          children:[Text(transaction.delegateName, style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold))],
+                          children:[Text(transaction.delegateName, style: const TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold))],
                         ),
                       )
                   ],

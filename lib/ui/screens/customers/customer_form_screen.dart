@@ -40,6 +40,8 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
   List<String> _areas =[];
   bool _isEdit = false;
 
+  bool _canPop = false;
+
   @override
   void initState() {
     super.initState();
@@ -82,12 +84,31 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
 
     return BlocProvider(
       create: (context) => CustomerFormCubit(context.read<CustomersRepository>(), authState.user),
-      child: Scaffold(
-        appBar: AppBar(title: Text(_isEdit ? 'تعديل الزبون' : 'إضافة زبون جديد'), centerTitle: true),
+        child: PopScope(
+          canPop: _canPop, // false بالوضع الطبيعي
+          onPopInvoked: (didPop) {
+            if (didPop) return;
+            // إشعار لطيف للمندوب ليستخدم الزر الصحيح
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('يرجى استخدام سهم الرجوع في أعلى الشاشة.'), duration: Duration(seconds: 1)));
+          },
+          child: Scaffold(
+        appBar: AppBar(
+          // زر رجوع مخصص نتحكم به
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back), // السهم يتجه تلقائياً حسب اللغة
+              onPressed: () {
+                setState(() => _canPop = true); // نسمح بالخروج
+                Future.delayed(const Duration(milliseconds: 50), () {
+                  if (context.mounted) context.pop(); // نخرج بأمان
+                });
+              },
+            ),
+            title: Text(_isEdit ? 'تعديل الزبون' : 'إضافة زبون جديد'), centerTitle: true),
         body: BlocConsumer<CustomerFormCubit, CustomerFormState>(
           listener: (context, state) {
             if (state is CustomerFormSuccess) {
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم الحفظ بنجاح'), backgroundColor: Colors.green));
+              setState(() => _canPop = true);
               context.pop();
             } else if (state is CustomerFormError) {
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message), backgroundColor: Colors.red));
@@ -102,7 +123,46 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                   children:[
                     TextFormField(controller: _nameController, decoration: const InputDecoration(labelText: 'اسم الزبون', border: OutlineInputBorder()), validator: (v) => v!.isEmpty ? 'مطلوب' : null),
                     const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(value: _selectedRegion, items: _areas.map((a) => DropdownMenuItem(value: a, child: Text(a))).toList(), onChanged: (v) => setState(() => _selectedRegion = v), decoration: const InputDecoration(labelText: 'المنطقة', border: OutlineInputBorder()), validator: (v) => v == null ? 'مطلوب' : null),
+                    Autocomplete<String>(
+                      initialValue: TextEditingValue(text: _selectedRegion ?? ''),
+                      displayStringForOption: (String option) => option,
+                      optionsBuilder: (TextEditingValue textEditingValue) {
+                        if (textEditingValue.text.isEmpty) return _areas;
+                        return _areas.where((String area) {
+                          return area.toLowerCase().contains(textEditingValue.text.toLowerCase());
+                        });
+                      },
+                      onSelected: (String selection) {
+                        setState(() => _selectedRegion = selection);
+                      },
+                      fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                        return TextFormField(
+                          controller: controller,
+                          focusNode: focusNode,
+                          decoration: InputDecoration(
+                            labelText: 'المنطقة (ابحث أو اختر)',
+                            border: const OutlineInputBorder(),
+                            prefixIcon: const Icon(Icons.location_on_outlined),
+                            suffixIcon: IconButton(
+                              icon: const Icon(Icons.clear, size: 18),
+                              onPressed: () {
+                                controller.clear();
+                                setState(() => _selectedRegion = null);
+                              },
+                            ),
+                          ),
+                          onChanged: (val) {
+                            setState(() => _selectedRegion = val);
+                          },
+                          validator: (val) {
+                            if (val == null || val.trim().isEmpty) return 'الرجاء تحديد المنطقة';
+                            // حماية: التأكد أن المنطقة التي أدخلها المندوب موجودة فعلاً في قائمة المناطق المسجلة
+                            if (!_areas.contains(val.trim())) return 'هذه المنطقة غير مسجلة في النظام';
+                            return null;
+                          },
+                        );
+                      },
+                    ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(value: _selectedGender, items: const[DropdownMenuItem(value: 'male', child: Text('ذكر')), DropdownMenuItem(value: 'female', child: Text('أنثى'))], onChanged: (v) => setState(() => _selectedGender = v), decoration: const InputDecoration(labelText: 'الجنس', border: OutlineInputBorder()), validator: (v) => v == null ? 'مطلوب' : null),
                     const SizedBox(height: 12),
@@ -137,7 +197,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                         }
                       },
                       style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), backgroundColor: Colors.teal),
-                      child: state is CustomerFormLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('حفظ واعتماد', style: TextStyle(fontSize: 18, color: Colors.white)),
+                      child: state is CustomerFormLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('حفظ الزبون', style: TextStyle(fontSize: 18, color: Colors.white)),
                     )),
                   ],
                 ),
@@ -146,6 +206,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
           },
         ),
       ),
+        ),
     );
   }
 }
