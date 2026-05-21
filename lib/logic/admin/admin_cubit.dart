@@ -11,7 +11,11 @@ class AdminCubit extends Cubit<AdminState> {
   AdminCubit(this._repository) : super(AdminLoading()) {
     _sub = _repository.getUsersStream().listen(
           (users) => emit(AdminLoaded(users)),
-      onError: (e) => emit(AdminError('خطأ في جلب المستخدمين: $e')),
+      onError: (e) {
+        if (!e.toString().contains('permission-denied')) {
+          emit(AdminError('خطأ في جلب المستخدمين: $e'));
+        }
+      },
     );
   }
 

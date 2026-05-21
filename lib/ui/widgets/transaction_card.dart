@@ -76,11 +76,11 @@ class TransactionCard extends StatelessWidget {
                     if (!isMine && transaction.delegateName != 'مجهول')
                       Container(
                         margin: const EdgeInsets.only(top: 4),
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
                         decoration: BoxDecoration(color: _hexToColor(transaction.delegateColor), borderRadius: BorderRadius.circular(4)),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
-                          children:[Text(transaction.delegateName, style: const TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold))],
+                          children:[Text(transaction.delegateName, style: const TextStyle(fontSize: 6, color: Colors.white, fontWeight: FontWeight.bold))],
                         ),
                       )
                   ],

@@ -157,12 +157,17 @@ class _UserEditScreenState extends State<UserEditScreen> {
 
   // 2. نافذة الحذف مع العداد 3 ثوانٍ
   void _showActualDeleteDialog() {
+    // السحر هنا: نلتقط الـ Cubit قبل فتح النافذة المنبثقة لكي لا يضيع
+    final adminCubit = context.read<AdminCubit>();
+
     showDialog(context: context, builder: (ctx) {
       return StreamBuilder<int>(
           stream: Stream.periodic(const Duration(seconds: 1), (i) => 3 - i - 1).take(3),
-          builder: (context, snapshot) {
+          // تم تغيير اسم المتغير هنا إلى streamCtx لتجنب التضارب
+          builder: (streamCtx, snapshot) {
             final timeLeft = snapshot.data ?? 3;
             final isReady = timeLeft <= 0;
+
             return AlertDialog(
                 title: const Text('تأكيد الحذف نهائياً', style: TextStyle(color: Colors.red)),
                 content: const Text('هل أنت متأكد من حذف هذا المستخدم؟ سيتم إيقاف حسابه فوراً.'),
@@ -170,9 +175,10 @@ class _UserEditScreenState extends State<UserEditScreen> {
                   TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
                   ElevatedButton(
                     onPressed: isReady ? () {
-                      context.read<AdminCubit>().deleteUser(widget.user!.id);
-                      Navigator.pop(ctx);
-                      context.pop();
+                      // استخدام الـ Cubit الذي التقطناه في الأعلى
+                      adminCubit.deleteUser(widget.user!.id);
+                      Navigator.pop(ctx); // إغلاق نافذة التأكيد
+                      if (mounted) context.pop(); // العودة لشاشة الإدارة
                     } : null,
                     style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
                     child: Text(isReady ? 'حذف الحساب' : 'حذف ($timeLeft)'),

@@ -11,19 +11,18 @@ import '../../../data/repositories/company_accounts_repository.dart';
 import '../../../data/repositories/products_repository.dart';
 import '../../../data/models/company_account_model.dart';
 import '../../../data/models/product_model.dart';
-import '../../widgets/common/permission_guard.dart';
+import '../../../data/models/cost_material_model.dart'; // <--- أضفنا استيراد النموذج الجديد
 import '../../../logic/company_accounts/cost_materials_cubit.dart';
-import '../../../data/models/cost_material_model.dart';
+import '../../widgets/common/permission_guard.dart';
 
 // =========================================================================
-// الشاشة الرئيسية الحاضنة (تحوي التبويبين الرئيسيين)
+// الشاشة الرئيسية الحاضنة
 // =========================================================================
 class CompanyAccountsScreen extends StatelessWidget {
   const CompanyAccountsScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    // 1. استخراج صلاحية التعديل للمستخدم الحالي
     final authState = context.read<AuthCubit>().state;
     final hasEditPermission = (authState is AuthAuthenticated)
         ? authState.user.permissions.companyAccountsEdit
@@ -62,10 +61,10 @@ class CompanyAccountsScreen extends StatelessWidget {
             ),
           ),
           body: TabBarView(
-            physics: const NeverScrollableScrollPhysics(), // منع التمرير لتجنب تعارض الإيماءات
+            physics: const NeverScrollableScrollPhysics(),
             children:[
-              const _FinancialAccountsView(), // التبويب الأول (الحسابات)
-              _ProductsCostView(hasEditPermission: hasEditPermission),      // التبويب الثاني (تكلفة المواد)
+              const _FinancialAccountsView(),
+              _ProductsCostView(hasEditPermission: hasEditPermission),
             ],
           ),
         ),
@@ -188,23 +187,22 @@ class _FinancialAccountsViewState extends State<_FinancialAccountsView> with Sin
       currencyGroups[acc.currency]!.add(acc);
     }
 
-    // السحر هنا: استخراج العملات وترتيبها أبجدياً (مثلاً: SYP ثم USD)
     final sortedCurrencies = currencyGroups.keys.toList()..sort();
 
     return RefreshIndicator(
       onRefresh: () async => await Future.delayed(const Duration(seconds: 1)),
       child: ListView.builder(
         padding: const EdgeInsets.only(bottom: 80),
-        itemCount: sortedCurrencies.length, // نستخدم القائمة المرتبة
+        itemCount: sortedCurrencies.length,
         itemBuilder: (context, index) {
-          final currency = sortedCurrencies[index]; // نأخذ العملة بالترتيب الأبجدي
+          final currency = sortedCurrencies[index];
           final accountsInCurrency = currencyGroups[currency]!;
           final double totalForCurrency = accountsInCurrency.fold(0, (sum, acc) => sum + acc.balance);
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 15),
+              const SizedBox(height: 15,),
               ReorderableListView.builder(
                 shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), buildDefaultDragHandles: hasEditPermission, itemCount: accountsInCurrency.length,
                 onReorder: (oldIndex, newIndex) => context.read<CompanyAccountsCubit>().reorder(oldIndex, newIndex, accountsInCurrency),
@@ -219,7 +217,7 @@ class _FinancialAccountsViewState extends State<_FinancialAccountsView> with Sin
                     child: ListTile(
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       leading: CircleAvatar(backgroundColor: themeColor, child: Icon(Icons.account_balance_wallet, color: Colors.white, size: 20)),
-                      title: Text(account.accountName, style: TextStyle(fontWeight: FontWeight.bold, color: themeColor, fontSize: 15)),
+                      title: Text(account.accountName, style: TextStyle(fontWeight: FontWeight.bold, color: themeColor)),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children:[
@@ -227,7 +225,7 @@ class _FinancialAccountsViewState extends State<_FinancialAccountsView> with Sin
                             mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end,
                             children:[
                               Text('الرصيد', style: TextStyle(fontSize: 10, color: Colors.grey.shade700)),
-                              Text('${NumberFormat.currency(symbol: '', decimalDigits: 1).format(account.balance)} ${account.currency}', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: themeColor)),
+                              Text('${NumberFormat.currency(symbol: '', decimalDigits: 1).format(account.balance)} ${account.currency}', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: themeColor)),
                             ],
                           ),
                           if (hasEditPermission) ...[
@@ -251,7 +249,7 @@ class _FinancialAccountsViewState extends State<_FinancialAccountsView> with Sin
                 },
               ),
               Container(
-                width: double.infinity, padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), margin: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+                width: double.infinity, padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), margin: const EdgeInsets.fromLTRB(12, 4, 12, 12),
                 decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(8)),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -261,7 +259,7 @@ class _FinancialAccountsViewState extends State<_FinancialAccountsView> with Sin
                   ],
                 ),
               ),
-              const SizedBox(height: 15),
+              const SizedBox(height: 10,),
             ],
           );
         },
@@ -276,60 +274,58 @@ class _FinancialAccountsViewState extends State<_FinancialAccountsView> with Sin
 
     return BlocProvider(
       create: (context) => CompanyAccountsCubit(context.read<CompanyAccountsRepository>()),
-      child: Scaffold(
-        body: Column(
-          children:[
-            TabBar(
-              controller: _tabController, labelColor: Colors.teal, unselectedLabelColor: Colors.grey, indicatorColor: Colors.teal,
-              tabs: const[Tab(text: 'الموردون'), Tab(text: 'الزبائن'), Tab(text: 'حسابات أخرى')],
-            ),
-            Expanded(
-              child: BlocBuilder<CompanyAccountsCubit, CompanyAccountsState>(
-                builder: (context, state) {
-                  if (state is CompanyAccountsLoading) return const Center(child: CircularProgressIndicator());
-                  if (state is CompanyAccountsError) return Center(child: Text(state.message, style: const TextStyle(color: Colors.red)));
-                  if (state is CompanyAccountsLoaded) {
-                    return Stack(
-                      children: [
-                        TabBarView(
-                          controller: _tabController,
-                          children:[
-                            _buildTabContent(context, state, 'supplier', hasEditPermission),
-                            _buildTabContent(context, state, 'customer', hasEditPermission),
-                            _buildTabContent(context, state, 'others', hasEditPermission),
-                          ],
-                        ),
-                        if (hasEditPermission)
-                          Positioned(
-                            bottom: 16, right: 16,
-                            child: FloatingActionButton(
-                              backgroundColor: Colors.teal,
-                              onPressed: () {
-                                int nextIndex = state.accounts.length;
-                                String defType = 'supplier';
-                                if (_tabController.index == 1) defType = 'customer';
-                                if (_tabController.index == 2) defType = 'others';
-                                _showAccountFormDialog(context, nextOrderIndex: nextIndex, defaultType: defType);
-                              },
-                              child: const Icon(Icons.add, color: Colors.white),
-                            ),
+      child: Column(
+        children:[
+          TabBar(
+            controller: _tabController, labelColor: Colors.teal, unselectedLabelColor: Colors.grey, indicatorColor: Colors.teal,
+            tabs: const[Tab(text: 'الموردون'), Tab(text: 'الزبائن'), Tab(text: 'حسابات أخرى')],
+          ),
+          Expanded(
+            child: BlocBuilder<CompanyAccountsCubit, CompanyAccountsState>(
+              builder: (context, state) {
+                if (state is CompanyAccountsLoading) return const Center(child: CircularProgressIndicator());
+                if (state is CompanyAccountsError) return Center(child: Text(state.message, style: const TextStyle(color: Colors.red)));
+                if (state is CompanyAccountsLoaded) {
+                  return Stack(
+                    children: [
+                      TabBarView(
+                        controller: _tabController,
+                        children:[
+                          _buildTabContent(context, state, 'supplier', hasEditPermission),
+                          _buildTabContent(context, state, 'customer', hasEditPermission),
+                          _buildTabContent(context, state, 'others', hasEditPermission),
+                        ],
+                      ),
+                      if (hasEditPermission)
+                        Positioned(
+                          bottom: 16, left: 16, // <--- التعديل: الزر على اليسار كما طلبت
+                          child: FloatingActionButton(
+                            backgroundColor: Colors.teal,
+                            onPressed: () {
+                              int nextIndex = state.accounts.length;
+                              String defType = 'supplier';
+                              if (_tabController.index == 1) defType = 'customer';
+                              if (_tabController.index == 2) defType = 'others';
+                              _showAccountFormDialog(context, nextOrderIndex: nextIndex, defaultType: defType);
+                            },
+                            child: const Icon(Icons.add, color: Colors.white),
                           ),
-                      ],
-                    );
-                  }
-                  return const SizedBox.shrink();
-                },
-              ),
+                        ),
+                    ],
+                  );
+                }
+                return const SizedBox.shrink();
+              },
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
 // =========================================================================
-// الشاشة الجديدة: تكلفة المواد (إدارة كاملة، سحب وإفلات، تبويبات)
+// التبويب الثاني: تكلفة المواد (تبويبات، أعمدة، وسحب وإفلات)
 // =========================================================================
 class _ProductsCostView extends StatefulWidget {
   final bool hasEditPermission;
@@ -344,53 +340,71 @@ class _ProductsCostViewState extends State<_ProductsCostView> {
 
   String _formatNum(double num) => NumberFormat('#,##0.##').format(num);
 
-  void _showMaterialDialog(BuildContext context, CostMaterialsCubit cubit, {CostMaterialModel? material, String tab = 'عام', int col = 0, int row = 0}) {
+  void _showMaterialDialog(BuildContext context, CostMaterialsCubit cubit, {CostMaterialModel? material, String tab = '', int col = 2, int row = 0}) {
     if (!widget.hasEditPermission) return;
 
     final isEdit = material != null;
-    final nameCtrl = TextEditingController(text: material?.name ?? '');
-    final priceCtrl = TextEditingController(text: material?.price.toString() ?? '0');
-    final curCtrl = TextEditingController(text: material?.currency ?? '');
-    final tabCtrl = TextEditingController(text: material?.tabName ?? tab);
-    final colCtrl = TextEditingController(text: ((material?.columnIndex ?? col) + 1).toString());
+    final nameCtrl = TextEditingController(text: isEdit ? material.name : '');
+    final priceCtrl = TextEditingController(text: isEdit ? material.price.toString() : '0');
+    final curCtrl = TextEditingController(text: isEdit ? material.currency : '');
+    final tabCtrl = TextEditingController(text: isEdit ? material.tabName : tab);
+    final colCtrl = TextEditingController(text: (isEdit ? material.columnIndex : col).toString());
+
+    // تاريخ آخر شراء
+    DateTime selectedDate = isEdit ? material.lastPurchaseDate : DateTime.now();
 
     showDialog(context: context, builder: (ctx) {
-      return AlertDialog(
-        title: Text(isEdit ? 'تعديل التكلفة' : 'إضافة مادة', style: const TextStyle(color: Colors.teal, fontWeight: FontWeight.bold)),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children:[
-              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'اسم المادة (مثال: ظرف جبنة)', border: OutlineInputBorder())), const SizedBox(height: 12),
-              Row(children:[
-                Expanded(flex: 2, child: TextField(controller: priceCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'التكلفة', border: OutlineInputBorder()))), const SizedBox(width: 8),
-                Expanded(child: TextField(controller: curCtrl, decoration: const InputDecoration(labelText: 'العملة', border: OutlineInputBorder()))),
-              ]), const SizedBox(height: 12),
-              Row(children:[
-                Expanded(flex: 2, child: TextField(controller: tabCtrl, decoration: const InputDecoration(labelText: 'التبويب', border: OutlineInputBorder()))), const SizedBox(width: 8),
-                Expanded(child: TextField(controller: colCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'العمود', border: OutlineInputBorder()))),
-              ]),
-            ],
+      return StatefulBuilder(builder: (context, setState) {
+        return AlertDialog(
+          title: Text(isEdit ? 'تعديل التكلفة' : 'إضافة مادة', style: const TextStyle(color: Colors.teal, fontWeight: FontWeight.bold)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children:[
+                TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'اسم المادة (مثال: ظرف جبنة)', border: OutlineInputBorder())), const SizedBox(height: 12),
+                Row(children:[
+                  Expanded(flex: 2, child: TextField(controller: priceCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'التكلفة', border: OutlineInputBorder()))), const SizedBox(width: 8),
+                  Expanded(child: TextField(controller: curCtrl, decoration: const InputDecoration(labelText: 'العملة', border: OutlineInputBorder()))),
+                ]), const SizedBox(height: 12),
+                Row(children:[
+                  Expanded(flex: 2, child: TextField(controller: tabCtrl, decoration: const InputDecoration(labelText: 'التبويب', border: OutlineInputBorder()))), const SizedBox(width: 8),
+                  Expanded(child: TextField(controller: colCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'العمود', border: OutlineInputBorder()))),
+                ]), const SizedBox(height: 12),
+                // حقل تاريخ آخر شراء
+                InkWell(
+                  onTap: () async {
+                    final picked = await showDatePicker(context: context, initialDate: selectedDate, firstDate: DateTime(2000), lastDate: DateTime.now().add(const Duration(days: 365)));
+                    if (picked != null) setState(() => selectedDate = picked);
+                  },
+                  child: InputDecorator(
+                    decoration: const InputDecoration(labelText: 'تاريخ آخر شراء', border: OutlineInputBorder(), isDense: true),
+                    child: Text(DateFormat('yyyy-MM-dd').format(selectedDate)),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        actions:[
-          if (isEdit) TextButton(onPressed: () { cubit.deleteMaterial(material.id); Navigator.pop(ctx); }, child: const Text('حذف', style: TextStyle(color: Colors.red))),
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
-            onPressed: () {
-              if (nameCtrl.text.isEmpty) return;
-              final m = CostMaterialModel(
-                id: material?.id ?? '', name: nameCtrl.text.trim(), price: double.tryParse(priceCtrl.text) ?? 0, currency: curCtrl.text.trim(),
-                tabName: tabCtrl.text.trim(), columnIndex: (int.tryParse(colCtrl.text) ?? 1) - 1, rowIndex: material?.rowIndex ?? row, isSynced: false,
-              );
-              cubit.saveMaterial(m, !isEdit);
-              Navigator.pop(ctx);
-            },
-            child: const Text('حفظ', style: TextStyle(color: Colors.white)),
-          )
-        ],
-      );
+          actions:[
+            if (isEdit) TextButton(onPressed: () { cubit.deleteMaterial(material.id); Navigator.pop(ctx); }, child: const Text('حذف', style: TextStyle(color: Colors.red))),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+              onPressed: () {
+                if (nameCtrl.text.isEmpty) return;
+                final m = CostMaterialModel(
+                  id: material?.id ?? '', name: nameCtrl.text.trim(), price: double.tryParse(priceCtrl.text) ?? 0, currency: curCtrl.text.trim(),
+                  tabName: tabCtrl.text.trim(), columnIndex: int.tryParse(colCtrl.text) ?? 0, rowIndex: material?.rowIndex ?? row,
+                  lastPurchaseDate: selectedDate, // <--- حفظ التاريخ
+                  isSynced: false,
+                );
+                cubit.saveMaterial(m, !isEdit);
+                Navigator.pop(ctx);
+              },
+              child: const Text('حفظ', style: TextStyle(color: Colors.white)),
+            )
+          ],
+        );
+      });
     });
   }
 
@@ -407,7 +421,7 @@ class _ProductsCostViewState extends State<_ProductsCostView> {
 
           final Map<String, Map<int, List<CostMaterialModel>>> tabsMap = {};
           for (var p in materials) {
-            final tName = p.tabName.isEmpty ? '' : p.tabName;
+            final tName = p.tabName.isEmpty ? 'عام' : p.tabName;
             tabsMap.putIfAbsent(tName, () => {});
             tabsMap[tName]!.putIfAbsent(p.columnIndex, () =>[]);
             tabsMap[tName]![p.columnIndex]!.add(p);
@@ -424,7 +438,7 @@ class _ProductsCostViewState extends State<_ProductsCostView> {
             length: tabNames.isEmpty ? 1 : tabNames.length,
             child: Scaffold(
               appBar: AppBar(
-                toolbarHeight: 0, // إخفاء العنوان الأساسي لنوفر مساحة
+                toolbarHeight: 0,
                 bottom: tabNames.isEmpty ? null : TabBar(
                   isScrollable: true, labelColor: Colors.teal, indicatorColor: Colors.teal,
                   onTap: (index) => setState(() => _currentTab = tabNames[index]),
@@ -468,31 +482,51 @@ class _ProductsCostViewState extends State<_ProductsCostView> {
                                 color: candidateData.isNotEmpty ? Colors.teal.shade50 : Colors.transparent,
                                 child: Column(
                                   children:[
-                                    Container(width: double.infinity, padding: const EdgeInsets.all(8), color: Colors.blueGrey.shade100, child: Text('العمود ${cIdx + 1}', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold))),
+                                    Container(
+                                      width: double.infinity, padding: const EdgeInsets.all(8),
+                                      color: Colors.blueGrey.shade100,
+                                      child: Text('العمود ${cIdx + 1}', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                    ),
                                     ...colItems.asMap().entries.map((entry) {
                                       final m = entry.value;
-                                      final bgColor = entry.key % 2 == 0 ? Colors.white : Colors.grey.shade50;
+                                      // ألوان متباينة لمنع زغللة العين
+                                      final bgColor = entry.key % 2 == 0 ? Colors.white : Colors.grey.shade100;
 
                                       Widget cardContent = InkWell(
                                         onTap: () => _showMaterialDialog(context, cubit, material: m),
                                         child: Container(
-                                          width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+                                          width: double.infinity,
+                                          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
                                           decoration: BoxDecoration(color: bgColor, border: Border.all(color: Colors.grey.shade300, width: 0.5)),
                                           child: Column(
                                             children:[
-                                              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                                                Text(m.name, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blueGrey)),
-                                                if (!m.isSynced) const Padding(padding: EdgeInsets.only(right: 4), child: Icon(Icons.cloud_off, color: Colors.orange, size: 14)),
-                                              ]),
+                                              Row(
+                                                  mainAxisAlignment: MainAxisAlignment.center,
+                                                  children: [
+                                                    // Expanded يمنع اختفاء النص أو خروجه خارج البطاقة
+                                                    Expanded(
+                                                      child: Text(m.name, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.blueGrey)),
+                                                    ),
+                                                    if (!m.isSynced) const Padding(padding: EdgeInsets.only(right: 4), child: Icon(Icons.cloud_off, color: Colors.orange, size: 14)),
+                                                  ]
+                                              ),
                                               const SizedBox(height: 4),
-                                              Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: Colors.teal.shade50, borderRadius: BorderRadius.circular(4)), child: Text('${_formatNum(m.price)} ${m.currency}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.teal))),
+                                              Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+                                                  decoration: BoxDecoration(color: Colors.teal.shade50, borderRadius: BorderRadius.circular(4)),
+                                                  child: Text('${_formatNum(m.price)} ${m.currency}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.teal))
+                                              ),
+                                              const SizedBox(height: 2),
+                                              // عرض تاريخ الشراء
+                                              Text('آخر شراء: ${DateFormat('yyyy-MM-dd').format(m.lastPurchaseDate)}', style: const TextStyle(fontSize: 9, color: Colors.grey)),
                                             ],
                                           ),
                                         ),
                                       );
 
                                       return widget.hasEditPermission ? LongPressDraggable<CostMaterialModel>(
-                                        data: m, feedback: Material(elevation: 8, child: Container(padding: const EdgeInsets.all(12), color: Colors.orange.shade100, child: Text(m.name, style: const TextStyle(fontWeight: FontWeight.bold)))),
+                                        data: m,
+                                        feedback: Material(elevation: 8, child: Container(padding: const EdgeInsets.all(12), color: Colors.orange.shade100, child: Text(m.name, style: const TextStyle(fontWeight: FontWeight.bold)))),
                                         childWhenDragging: Container(height: 50, color: Colors.grey.shade300),
                                         child: cardContent,
                                       ) : cardContent;
@@ -508,11 +542,12 @@ class _ProductsCostViewState extends State<_ProductsCostView> {
                   );
                 }).toList(),
               ),
+              // الزر أصبح على اليسار (left: 16)
               floatingActionButton: widget.hasEditPermission ? FloatingActionButton(
                 backgroundColor: Colors.teal,
                 child: const Icon(Icons.add, color: Colors.white),
                 onPressed: () {
-                  String tab = _currentTab ?? '';
+                  String tab = _currentTab ?? 'عام';
                   int col = 0; int row = 0;
                   if (tabsMap.containsKey(tab)) {
                     final cols = tabsMap[tab]!;

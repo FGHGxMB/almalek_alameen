@@ -13,7 +13,11 @@ class CompanyAccountsCubit extends Cubit<CompanyAccountsState> {
   CompanyAccountsCubit(this._repository) : super(CompanyAccountsLoading()) {
     _sub = _repository.getCompanyAccountsStream().listen(
           (accounts) => emit(CompanyAccountsLoaded(accounts)),
-      onError: (e) => emit(CompanyAccountsError('خطأ في جلب الحسابات: $e')),
+      onError: (e) {
+        if (!e.toString().contains('permission-denied')) {
+          emit(CompanyAccountsError('خطأ في جلب الحسابات: $e'));
+        }
+      },
     );
   }
 

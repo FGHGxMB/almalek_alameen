@@ -9,11 +9,13 @@ class CostMaterialModel {
   final String tabName;
   final int columnIndex;
   final int rowIndex;
+  final DateTime lastPurchaseDate; // <--- الحقل الجديد
   final bool isSynced;
 
   CostMaterialModel({
     required this.id, required this.name, required this.price, required this.currency,
-    required this.tabName, required this.columnIndex, required this.rowIndex, this.isSynced = true,
+    required this.tabName, required this.columnIndex, required this.rowIndex,
+    required this.lastPurchaseDate, this.isSynced = true,
   });
 
   factory CostMaterialModel.fromFirestore(DocumentSnapshot doc) {
@@ -26,6 +28,7 @@ class CostMaterialModel {
       tabName: data['tab_name'] ?? 'عام',
       columnIndex: data['column_index'] ?? 0,
       rowIndex: data['row_index'] ?? 0,
+      lastPurchaseDate: (data['last_purchase_date'] as Timestamp?)?.toDate() ?? DateTime.now(),
       isSynced: !doc.metadata.hasPendingWrites,
     );
   }
@@ -33,13 +36,15 @@ class CostMaterialModel {
   Map<String, dynamic> toFirestore() => {
     'name': name, 'price': price, 'currency': currency,
     'tab_name': tabName, 'column_index': columnIndex, 'row_index': rowIndex,
+    'last_purchase_date': Timestamp.fromDate(lastPurchaseDate),
     'updated_at': FieldValue.serverTimestamp(),
   };
 
-  CostMaterialModel copyWith({String? id, String? name, double? price, String? currency, String? tabName, int? columnIndex, int? rowIndex}) {
+  CostMaterialModel copyWith({String? id, String? name, double? price, String? currency, String? tabName, int? columnIndex, int? rowIndex, DateTime? lastPurchaseDate}) {
     return CostMaterialModel(
       id: id ?? this.id, name: name ?? this.name, price: price ?? this.price, currency: currency ?? this.currency,
       tabName: tabName ?? this.tabName, columnIndex: columnIndex ?? this.columnIndex, rowIndex: rowIndex ?? this.rowIndex,
+      lastPurchaseDate: lastPurchaseDate ?? this.lastPurchaseDate,
     );
   }
 }

@@ -83,7 +83,11 @@ class CustomersCubit extends Cubit<CustomersState> {
     _sub = _repository.getCustomersStream(currentUser).listen((customers) {
       _allCustomers = customers;
       applyFilters();
-    }, onError: (e) => emit(CustomersError('خطأ: $e')));
+    }, onError: (e) {
+      if (!e.toString().contains('permission-denied')) {
+        emit(CustomersError('خطأ: $e'));
+      }
+    });
   }
 
   void toggleSelection(String id) {
