@@ -337,6 +337,14 @@ class _ProductsCostView extends StatefulWidget {
 
 class _ProductsCostViewState extends State<_ProductsCostView> {
   String? _currentTab;
+  String _searchQuery = '';
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   String _formatNum(double num) => NumberFormat('#,##0.##').format(num);
 
@@ -348,7 +356,7 @@ class _ProductsCostViewState extends State<_ProductsCostView> {
     final priceCtrl = TextEditingController(text: isEdit ? material.price.toString() : '0');
     final curCtrl = TextEditingController(text: isEdit ? material.currency : '');
     final tabCtrl = TextEditingController(text: isEdit ? material.tabName : tab);
-    final colCtrl = TextEditingController(text: (isEdit ? material.columnIndex : col).toString());
+    final colCtrl = TextEditingController(text: ((isEdit ? material.columnIndex : col) + 1).toString());
 
     // تاريخ آخر شراء
     DateTime selectedDate = isEdit ? material.lastPurchaseDate : DateTime.now();
@@ -393,7 +401,7 @@ class _ProductsCostViewState extends State<_ProductsCostView> {
                 if (nameCtrl.text.isEmpty) return;
                 final m = CostMaterialModel(
                   id: material?.id ?? '', name: nameCtrl.text.trim(), price: double.tryParse(priceCtrl.text) ?? 0, currency: curCtrl.text.trim(),
-                  tabName: tabCtrl.text.trim(), columnIndex: int.tryParse(colCtrl.text) ?? 0, rowIndex: material?.rowIndex ?? row,
+                  tabName: tabCtrl.text.trim(), columnIndex: (int.tryParse(colCtrl.text) ?? 1) - 1, rowIndex: material?.rowIndex ?? row,
                   lastPurchaseDate: selectedDate, // <--- حفظ التاريخ
                   isSynced: false,
                 );
@@ -417,7 +425,11 @@ class _ProductsCostViewState extends State<_ProductsCostView> {
           if (state is! CMLoaded) return const Center(child: CircularProgressIndicator());
 
           final cubit = context.read<CostMaterialsCubit>();
-          final materials = state.materials;
+
+          // فلترة المواد بناءً على شريط البحث
+          final materials = state.materials.where(
+                  (p) => p.name.toLowerCase().contains(_searchQuery.toLowerCase())
+          ).toList();
 
           final Map<String, Map<int, List<CostMaterialModel>>> tabsMap = {};
           for (var p in materials) {
@@ -434,7 +446,38 @@ class _ProductsCostViewState extends State<_ProductsCostView> {
           if (tabNames.isNotEmpty && _currentTab == null) _currentTab = tabNames[0];
           if (!tabNames.contains(_currentTab) && tabNames.isNotEmpty) _currentTab = tabNames[0];
 
-          return DefaultTabController(
+          return Column( // تمت إزالة الـ DefaultTabController وتغليفه بالأسفل ليحوي شريط البحث
+              children: [
+                // --- شريط البحث ---
+                Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: TextField(
+                    controller: _searchController, // <--- ربطنا الكنترولر هنا
+                    decoration: InputDecoration(
+                      hintText: 'بحث عن مادة...',
+                      prefixIcon: const Icon(Icons.search, color: Colors.teal),
+                      // السحر هنا: يظهر زر (X) فقط إذا كان هناك نص مكتوب
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                        icon: const Icon(Icons.clear, color: Colors.grey),
+                        onPressed: () {
+                          _searchController.clear(); // مسح النص من الحقل
+                          setState(() => _searchQuery = ''); // تحديث الشاشة لإظهار كل المواد
+                        },
+                      )
+                          : null,
+                      filled: true,
+                      fillColor: Colors.grey.shade100,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
+                    ),
+                    onChanged: (v) => setState(() => _searchQuery = v),
+                  ),
+                ),
+
+          // --- محتوى التبويبات والأعمدة ---
+          Expanded(
+          child: DefaultTabController(
             length: tabNames.isEmpty ? 1 : tabNames.length,
             child: Scaffold(
               appBar: AppBar(
@@ -557,6 +600,8 @@ class _ProductsCostViewState extends State<_ProductsCostView> {
                 },
               ) : null,
             ),
+          ))
+          ]
           );
         },
       ),
