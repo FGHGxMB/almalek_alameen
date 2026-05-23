@@ -105,7 +105,49 @@ class _ReceiptFormScreenState extends State<ReceiptFormScreen> {
     });
   }
 
-  // --- دالة حوار الطباعة والمشاركة (للسندات) ---
+  // if (widget.receiptToEdit != null) {
+  // context.read<TransactionsRepository>().savePrintData(FirestoreKeys.receipts, widget.receiptToEdit!.id, nameCtrl.text.trim(), addressCtrl.text.trim(), phoneCtrl.text.trim());
+  // setState(() { _savedPrintName = nameCtrl.text.trim(); _savedPrintAddress = addressCtrl.text.trim(); _savedPrintPhone = phoneCtrl.text.trim(); });
+  // }
+  //
+  // // الحل الجذري لمنع الصورة الرمادية (MediaQuery و Material)
+  //
+  // // --- فلتر التباين (Contrast Filter) ---
+  // // لتفعيل الفلتر (لجعل الشعار والألوان داكنة جداً للطباعة):
+  // // 1. احذف علامتي التعليق /* و */
+  // // 2. إذا أردت إيقافه، أعد علامتي التعليق
+  //
+  // /*
+  //             const ColorFilter contrastFilter = ColorFilter.matrix([
+  //               1.5, 0, 0, 0, -64, // الأحمر
+  //               0, 1.5, 0, 0, -64, // الأخضر
+  //               0, 0, 1.5, 0, -64, // الأزرق
+  //               0, 0, 0, 1, 0,     // الشفافية
+  //             ]);
+  //             */
+  //
+  // final widgetToCapture = MediaQuery(
+  // data: const MediaQueryData(),
+  // child: Theme(
+  // data: ThemeData.light(),
+  // child: Directionality(
+  // textDirection: TextDirection.rtl,
+  //
+  // /*
+  //                 // لتفعيل الفلتر، قم بفك التعليق عن ColorFiltered وضع الـ Material بداخله
+  //                 child: ColorFiltered(
+  //                   colorFilter: contrastFilter,
+  //                   child: Material(
+  //                     color: Colors.white,
+  //                     child: PrintDesignWidget( ... ),
+  //                   ),
+  //                 ),
+  //                 */
+  //
+  // // الكود الافتراضي بدون فلتر (قم بتعليقه إذا فعلت الكود أعلاه)
+  //
+  // child: Material(
+
   void _showPrintShareDialog(BuildContext context, bool isShare, UserModel currentUser, List<CustomerModel> customers) async {
     CustomerModel? c;
     if (widget.receiptToEdit != null) {
@@ -133,10 +175,16 @@ class _ReceiptFormScreenState extends State<ReceiptFormScreen> {
       defaultPhone = c.phone1.isNotEmpty ? c.phone1 : c.phone2;
     }
 
+    String ownerName = 'مجهول';
+    try {
+      final ownerDoc = await FirebaseFirestore.instance.collection('users').doc(widget.receiptToEdit!.delegateId).get(const GetOptions(source: Source.cache));
+      if (ownerDoc.exists) ownerName = ownerDoc.data()?['account_name'] ?? 'مجهول';
+    } catch(e){}
+
     final nameCtrl = TextEditingController(text: defaultName);
     final addressCtrl = TextEditingController(text: defaultAddress);
     final phoneCtrl = TextEditingController(text: defaultPhone);
-    final delegateCtrl = TextEditingController(text: currentUser.accountName);
+    final delegateCtrl = TextEditingController(text: ownerName);
 
     String companyInfo = '';
     try {
@@ -168,25 +216,15 @@ class _ReceiptFormScreenState extends State<ReceiptFormScreen> {
               Navigator.pop(ctx);
 
               if (widget.receiptToEdit != null) {
+                // التحديث المحلي الفوري
+                setState(() {
+                  _savedPrintName = nameCtrl.text.trim();
+                  _savedPrintAddress = addressCtrl.text.trim();
+                  _savedPrintPhone = phoneCtrl.text.trim();
+                });
+                // الحفظ في الخلفية
                 context.read<TransactionsRepository>().savePrintData(FirestoreKeys.receipts, widget.receiptToEdit!.id, nameCtrl.text.trim(), addressCtrl.text.trim(), phoneCtrl.text.trim());
-                setState(() { _savedPrintName = nameCtrl.text.trim(); _savedPrintAddress = addressCtrl.text.trim(); _savedPrintPhone = phoneCtrl.text.trim(); });
               }
-
-              // الحل الجذري لمنع الصورة الرمادية (MediaQuery و Material)
-
-              // --- فلتر التباين (Contrast Filter) ---
-              // لتفعيل الفلتر (لجعل الشعار والألوان داكنة جداً للطباعة):
-              // 1. احذف علامتي التعليق /* و */
-              // 2. إذا أردت إيقافه، أعد علامتي التعليق
-
-              /*
-              const ColorFilter contrastFilter = ColorFilter.matrix([
-                1.5, 0, 0, 0, -64, // الأحمر
-                0, 1.5, 0, 0, -64, // الأخضر
-                0, 0, 1.5, 0, -64, // الأزرق
-                0, 0, 0, 1, 0,     // الشفافية
-              ]);
-              */
 
               final widgetToCapture = MediaQuery(
                 data: const MediaQueryData(),
@@ -194,25 +232,10 @@ class _ReceiptFormScreenState extends State<ReceiptFormScreen> {
                   data: ThemeData.light(),
                   child: Directionality(
                     textDirection: TextDirection.rtl,
-
-                    /*
-                  // لتفعيل الفلتر، قم بفك التعليق عن ColorFiltered وضع الـ Material بداخله
-                  child: ColorFiltered(
-                    colorFilter: contrastFilter,
-                    child: Material(
-                      color: Colors.white,
-                      child: PrintDesignWidget( ... ),
-                    ),
-                  ),
-                  */
-
-                    // الكود الافتراضي بدون فلتر (قم بتعليقه إذا فعلت الكود أعلاه)
-
                     child: Material(
                       color: Colors.white,
                       child: PrintDesignWidget(
                         type: TransactionType.receipt,
-                        paymentMethod: "نقدي",
                         docNumber: widget.receiptToEdit!.delegateReceiptNumber.toString().padLeft(5, '0'),
                         date: widget.receiptToEdit!.date,
                         delegateName: delegateCtrl.text,
@@ -223,27 +246,27 @@ class _ReceiptFormScreenState extends State<ReceiptFormScreen> {
                         items: const [],
                         productNames: const[],
                         totalAmount: widget.receiptToEdit!.amount,
+                        discount: 0.0,
+                        paymentMethod: "نقدي",
                       ),
                     ),
                   ),
                 ),
               );
 
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('جاري المعالجة...')));
-
-              try {
-                final bytes = await _screenshotController.captureFromWidget(widgetToCapture, delay: const Duration(milliseconds: 500), context: context);
-                if (isShare) {
+              if (isShare) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('جاري تجهيز الصورة...')));
+                try {
+                  final bytes = await _screenshotController.captureFromWidget(widgetToCapture, delay: const Duration(milliseconds: 500), context: context);
                   final directory = await getApplicationDocumentsDirectory();
-                  final imagePath = '${directory.path}/receipt_${widget.receiptToEdit?.delegateReceiptNumber ?? 'new'}.png';
+                  final imagePath = '${directory.path}/receipt_${widget.receiptToEdit?.delegateReceiptNumber.toString().padLeft(5, '0')}.png';
                   File(imagePath).writeAsBytesSync(bytes);
                   await Share.shareXFiles([XFile(imagePath)], text: 'مرفق صورة السند');
-                } else {
-                  await PrinterService().printImage(bytes);
-                  if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إرسال أمر الطباعة بنجاح!'), backgroundColor: Colors.green));
-                }
-              } catch(e) {
-                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
+                } catch(e) {}
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('جاري الاتصال بالطابعة...')));
+                await PrinterService().printImage(await _screenshotController.captureFromWidget(widgetToCapture, delay: const Duration(milliseconds: 500), context: context));
+                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إرسال الصورة للطابعة بنجاح!'), backgroundColor: Colors.green));
               }
             },
             child: Text(isShare ? 'مشاركة' : 'طباعة', style: const TextStyle(color: Colors.white)),

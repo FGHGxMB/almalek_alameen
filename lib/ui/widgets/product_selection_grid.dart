@@ -228,8 +228,8 @@ class _ProductSelectionGridState extends State<ProductSelectionGrid> {
                     },
                     child: Container(
                       width: double.infinity,
-                      height: 60,
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      height: 40,
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
                       alignment: Alignment.center,
                       decoration: BoxDecoration(color: bgColor, border: Border.all(color: Colors.grey.shade300, width: 0.5)),
                       child: Text(

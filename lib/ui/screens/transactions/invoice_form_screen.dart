@@ -101,6 +101,46 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
     });
   }
 
+  // List<String> pNames = state.items.map((i) => state.products.firstWhere((p) => p.id == i.productId).itemName).toList();
+  //
+  // // الحل الجذري لمنع الصورة الرمادية (MediaQuery و Material)
+  //
+  // // --- فلتر التباين (Contrast Filter) ---
+  // // لتفعيل الفلتر (لجعل الشعار والألوان داكنة جداً للطباعة):
+  // // 1. احذف علامتي التعليق /* و */
+  // // 2. إذا أردت إيقافه، أعد علامتي التعليق
+  //
+  // /*
+  //             const ColorFilter contrastFilter = ColorFilter.matrix([
+  //               1.5, 0, 0, 0, -64, // الأحمر
+  //               0, 1.5, 0, 0, -64, // الأخضر
+  //               0, 0, 1.5, 0, -64, // الأزرق
+  //               0, 0, 0, 1, 0,     // الشفافية
+  //             ]);
+  //             */
+  //
+  // final widgetToCapture = MediaQuery(
+  //     data: const MediaQueryData(),
+  //     child: Theme(
+  //         data: ThemeData.light(),
+  //         child: Directionality(
+  //             textDirection: TextDirection.rtl,
+  //
+  //             /*
+  //                 // لتفعيل الفلتر، قم بفك التعليق عن ColorFiltered وضع الـ Material بداخله
+  //                 child: ColorFiltered(
+  //                   colorFilter: contrastFilter,
+  //                   child: Material(
+  //                     color: Colors.white,
+  //                     child: PrintDesignWidget( ... ),
+  //                   ),
+  //                 ),
+  //                 */
+  //
+  //             // الكود الافتراضي بدون فلتر (قم بتعليقه إذا فعلت الكود أعلاه)
+  //
+  //             child: Material(
+
   void _showPrintShareDialog(BuildContext context, InvoiceFormReady state, bool isShare, UserModel currentUser) async {
     CustomerModel? c;
     try { c = state.myCustomers.firstWhere((cust) => cust.id == widget.invoiceToEdit!.customerId); } catch(e){}
@@ -108,8 +148,12 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
     String defaultName = _savedPrintName;
     if (defaultName.isEmpty && c != null) {
       defaultName = c.customerName;
-      if (_suffixToUse.isNotEmpty && defaultName.startsWith(_suffixToUse)) defaultName = defaultName.replaceFirst(_suffixToUse, '').trim();
-      if (defaultName.endsWith(' - ${c.region}')) defaultName = defaultName.substring(0, defaultName.length - (' - ${c.region}').length).trim();
+      if (_suffixToUse.isNotEmpty && defaultName.startsWith(_suffixToUse)) {
+        defaultName = defaultName.replaceFirst(_suffixToUse, '').trim();
+      }
+      if (defaultName.endsWith(' - ${c.region}')) {
+        defaultName = defaultName.substring(0, defaultName.length - (' - ${c.region}').length).trim();
+      }
     } else if (defaultName.isEmpty) defaultName = widget.invoiceToEdit!.customerName;
 
     String defaultAddress = _savedPrintAddress;
@@ -126,10 +170,16 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
       defaultPhone = c.phone1.isNotEmpty ? c.phone1 : c.phone2;
     }
 
+    String ownerName = 'مجهول';
+    try {
+      final ownerDoc = await FirebaseFirestore.instance.collection('users').doc(widget.invoiceToEdit!.delegateId).get(const GetOptions(source: Source.cache));
+      if (ownerDoc.exists) ownerName = ownerDoc.data()?['account_name'] ?? 'مجهول';
+    } catch(e){}
+
     final nameCtrl = TextEditingController(text: defaultName);
     final addressCtrl = TextEditingController(text: defaultAddress);
     final phoneCtrl = TextEditingController(text: defaultPhone);
-    final delegateCtrl = TextEditingController(text: currentUser.accountName);
+    final delegateCtrl = TextEditingController(text: ownerName);
 
     String companyInfo = '';
     try {
@@ -159,26 +209,20 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
             onPressed: () async {
               Navigator.pop(ctx);
-              context.read<TransactionsRepository>().savePrintData('invoices', widget.invoiceToEdit!.id, nameCtrl.text.trim(), addressCtrl.text.trim(), phoneCtrl.text.trim());
-              setState(() { _savedPrintName = nameCtrl.text.trim(); _savedPrintAddress = addressCtrl.text.trim(); _savedPrintPhone = phoneCtrl.text.trim(); });
+
+              // 1. التحديث المحلي الفوري (لكي يراه المستخدم في المرة القادمة حتى لو لم يكتمل الرفع)
+              setState(() {
+                _savedPrintName = nameCtrl.text.trim();
+                _savedPrintAddress = addressCtrl.text.trim();
+                _savedPrintPhone = phoneCtrl.text.trim();
+              });
+
+              // 2. إرسال الحفظ للسيرفر في الخلفية (بدون await)
+              context.read<TransactionsRepository>().savePrintData(
+                  'invoices', widget.invoiceToEdit!.id, nameCtrl.text.trim(), addressCtrl.text.trim(), phoneCtrl.text.trim()
+              );
 
               List<String> pNames = state.items.map((i) => state.products.firstWhere((p) => p.id == i.productId).itemName).toList();
-
-              // الحل الجذري لمنع الصورة الرمادية (MediaQuery و Material)
-
-              // --- فلتر التباين (Contrast Filter) ---
-              // لتفعيل الفلتر (لجعل الشعار والألوان داكنة جداً للطباعة):
-              // 1. احذف علامتي التعليق /* و */
-              // 2. إذا أردت إيقافه، أعد علامتي التعليق
-
-              /*
-              const ColorFilter contrastFilter = ColorFilter.matrix([
-                1.5, 0, 0, 0, -64, // الأحمر
-                0, 1.5, 0, 0, -64, // الأخضر
-                0, 0, 1.5, 0, -64, // الأزرق
-                0, 0, 0, 1, 0,     // الشفافية
-              ]);
-              */
 
               final widgetToCapture = MediaQuery(
                 data: const MediaQueryData(),
@@ -186,25 +230,10 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                   data: ThemeData.light(),
                   child: Directionality(
                     textDirection: TextDirection.rtl,
-
-                    /*
-                  // لتفعيل الفلتر، قم بفك التعليق عن ColorFiltered وضع الـ Material بداخله
-                  child: ColorFiltered(
-                    colorFilter: contrastFilter,
-                    child: Material(
-                      color: Colors.white,
-                      child: PrintDesignWidget( ... ),
-                    ),
-                  ),
-                  */
-
-                    // الكود الافتراضي بدون فلتر (قم بتعليقه إذا فعلت الكود أعلاه)
-
                     child: Material(
                       color: Colors.white,
                       child: PrintDesignWidget(
                         type: TransactionType.invoice,
-                        paymentMethod: widget.invoiceToEdit!.paymentMethod,
                         docNumber: widget.invoiceToEdit!.delegateInvoiceNumber.toString().padLeft(5, '0'),
                         date: widget.invoiceToEdit!.invoiceDate,
                         delegateName: delegateCtrl.text,
@@ -216,34 +245,26 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                         productNames: pNames,
                         totalAmount: state.total,
                         discount: state.discount,
+                        paymentMethod: widget.invoiceToEdit!.paymentMethod,
                       ),
                     ),
                   ),
                 ),
               );
 
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('جاري المعالجة...')));
-
-              try {
-                // استخراج الصورة أولاً (يستخدم للمشاركة وللطباعة)
-                final bytes = await _screenshotController.captureFromWidget(
-                  widgetToCapture,
-                  delay: const Duration(milliseconds: 500),
-                  context: context, // تمرير السياق يمنع الأخطاء البصرية
-                );
-
-                if (isShare) {
+              if (isShare) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('جاري تجهيز الصورة...')));
+                try {
+                  final bytes = await _screenshotController.captureFromWidget(widgetToCapture, delay: const Duration(milliseconds: 500), context: context);
                   final directory = await getApplicationDocumentsDirectory();
-                  final imagePath = '${directory.path}/invoice_${widget.invoiceToEdit!.delegateInvoiceNumber}.png';
+                  final imagePath = '${directory.path}/invoice_${widget.invoiceToEdit!.delegateInvoiceNumber.toString().padLeft(5, '0')}.png';
                   File(imagePath).writeAsBytesSync(bytes);
                   await Share.shareXFiles([XFile(imagePath)], text: 'مرفق صورة الفاتورة');
-                } else {
-                  // إرسال بايتات الصورة إلى طابعة البلوتوث
-                  await PrinterService().printImage(bytes);
-                  if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إرسال الصورة للطابعة بنجاح!'), backgroundColor: Colors.green));
-                }
-              } catch(e) {
-                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
+                } catch(e) {}
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('جاري الاتصال بالطابعة...')));
+                await PrinterService().printImage(await _screenshotController.captureFromWidget(widgetToCapture, delay: const Duration(milliseconds: 500), context: context));
+                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إرسال الصورة للطابعة بنجاح!'), backgroundColor: Colors.green));
               }
             },
             child: Text(isShare ? 'مشاركة' : 'طباعة', style: const TextStyle(color: Colors.white)),

@@ -137,9 +137,10 @@ class TransactionsCubit extends Cubit<TransactionsState> {
   }
 
   void _mergeAndEmit() {
-    if (allCustomers.isEmpty) return; // ننتظر تحميل الزبائن أولاً
+    // 🚨 تم حذف شرط (if allCustomers.isEmpty return) لكي تُعرض الفواتير النقدية حتى لو لم يُسجل أي زبون في التطبيق!
 
-    _allUnified =[];
+    _allUnified = [];
+
     for (var inv in _invoices) {
       bool isGiftInvoice = inv.items.isNotEmpty && inv.items.every((i) => i.isGift);
       String method = isGiftInvoice ? 'gift' : inv.paymentMethod;
@@ -174,8 +175,11 @@ class TransactionsCubit extends Cubit<TransactionsState> {
       final isMine = rec.delegateId == currentUser.id;
       final showModDate = (!isMine) || (isMine && currentUser.permissions.receiptEdit);
 
+      // بفضل كتلة try-catch، حتى لو كانت قائمة الزبائن فارغة، لن ينهار التطبيق وسيعرض الاسم (غير معروف أو محذوف)
       String cName = 'غير معروف';
-      try { cName = allCustomers.firstWhere((c) => c.id == rec.creditorAccount).customerName; } catch(e){}
+      try {
+        cName = allCustomers.firstWhere((c) => c.id == rec.creditorAccount).customerName;
+      } catch(e){}
 
       _allUnified.add(UnifiedTransaction(
         id: rec.id, type: TransactionType.receipt, date: rec.createdAt, updatedAt: rec.updatedAt,
@@ -186,6 +190,7 @@ class TransactionsCubit extends Cubit<TransactionsState> {
         delegateSuffix: usersMap[rec.delegateId]?.customerSuffix ?? '', paymentMethod: 'cash', showModifiedDate: showModDate, originalDoc: rec,
       ));
     }
+
     applyFilters();
   }
 
