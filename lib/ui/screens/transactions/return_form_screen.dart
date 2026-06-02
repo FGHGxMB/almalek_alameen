@@ -24,11 +24,16 @@ import '../../widgets/product_selection_grid.dart';
 import '../../../core/services/printer_service.dart';
 import '../../../data/models/unified_transaction.dart';
 import '../../widgets/print_design_widget.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'dart:typed_data';
 
 class ReturnFormScreen extends StatefulWidget {
   final ReturnModel? returnToEdit;
   final String targetSuffix;
-  const ReturnFormScreen({Key? key, this.returnToEdit, this.targetSuffix = ''}) : super(key: key);
+
+  const ReturnFormScreen({Key? key, this.returnToEdit, this.targetSuffix = ''})
+      : super(key: key);
+
   @override
   State<ReturnFormScreen> createState() => _ReturnFormScreenState();
 }
@@ -45,7 +50,9 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
   String _savedPrintPhone = '';
 
   String _formatNum(double num) => NumberFormat('#,##0').format(num);
-  String _rawNum(double num) => num == num.toInt() ? num.toInt().toString() : num.toString();
+
+  String _rawNum(double num) =>
+      num == num.toInt() ? num.toInt().toString() : num.toString();
 
   bool _canPop = false;
 
@@ -67,34 +74,50 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
       _savedPrintPhone = widget.returnToEdit!.printPhone;
     }
     final authState = context.read<AuthCubit>().state;
-    final currentUser = (authState is AuthAuthenticated) ? authState.user : null;
+    final currentUser =
+        (authState is AuthAuthenticated) ? authState.user : null;
 
     // إذا كانت فاتورة قديمة نأخذ بادئة صاحبها، وإذا كانت جديدة نأخذ بادئتك أنت!
-    _suffixToUse = widget.returnToEdit != null ? widget.targetSuffix : (currentUser?.customerSuffix ?? '');
+    _suffixToUse = widget.returnToEdit != null
+        ? widget.targetSuffix
+        : (currentUser?.customerSuffix ?? '');
   }
 
   void _showDeleteDialog(BuildContext context, ReturnFormCubit cubit) {
-    showDialog(context: context, builder: (ctx) {
-      return StreamBuilder<int>(
-          stream: Stream.periodic(const Duration(seconds: 1), (i) => 3 - i - 1).take(3),
-          builder: (context, snapshot) {
-            final timeLeft = snapshot.data ?? 3;
-            final isReady = timeLeft <= 0;
-            return AlertDialog(
-              title: const Text('تأكيد الحذف', style: TextStyle(color: Colors.red)),
-              content: const Text('هل أنت متأكد من حذف هذا المرتجع نهائياً؟ سيتم عكس الأرصدة.'),
-              actions:[
-                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
-                ElevatedButton(
-                  onPressed: isReady ? () { cubit.deleteReturn(widget.returnToEdit!); Navigator.pop(ctx); } : null,
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                  child: Text(isReady ? 'حذف المرتجع' : 'حذف ($timeLeft)'),
-                ),
-              ],
-            );
-          }
-      );
-    });
+    showDialog(
+        context: context,
+        builder: (ctx) {
+          return StreamBuilder<int>(
+              stream:
+                  Stream.periodic(const Duration(seconds: 1), (i) => 3 - i - 1)
+                      .take(3),
+              builder: (context, snapshot) {
+                final timeLeft = snapshot.data ?? 3;
+                final isReady = timeLeft <= 0;
+                return AlertDialog(
+                  title: const Text('تأكيد الحذف',
+                      style: TextStyle(color: Colors.red)),
+                  content: const Text(
+                      'هل أنت متأكد من حذف هذا المرتجع نهائياً؟ سيتم عكس الأرصدة.'),
+                  actions: [
+                    TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('إلغاء')),
+                    ElevatedButton(
+                      onPressed: isReady
+                          ? () {
+                              cubit.deleteReturn(widget.returnToEdit!);
+                              Navigator.pop(ctx);
+                            }
+                          : null,
+                      style:
+                          ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                      child: Text(isReady ? 'حذف المرتجع' : 'حذف ($timeLeft)'),
+                    ),
+                  ],
+                );
+              });
+        });
   }
 
   // List<String> pNames = state.items.map((i) => state.products.firstWhere((p) => p.id == i.productId).itemName).toList();
@@ -208,15 +231,20 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
             onPressed: () async {
               Navigator.pop(ctx);
 
-              // التحديث المحلي والحفظ في الخلفية
-              setState(() {
-                _savedPrintName = nameCtrl.text.trim();
-                _savedPrintAddress = addressCtrl.text.trim();
-                _savedPrintPhone = phoneCtrl.text.trim();
-              });
-              context.read<TransactionsRepository>().savePrintData(FirestoreKeys.returns, widget.returnToEdit!.id, nameCtrl.text.trim(), addressCtrl.text.trim(), phoneCtrl.text.trim());
+              context.read<TransactionsRepository>().savePrintData('returns', widget.returnToEdit!.id, nameCtrl.text.trim(), addressCtrl.text.trim(), phoneCtrl.text.trim());
+              setState(() { _savedPrintName = nameCtrl.text.trim(); _savedPrintAddress = addressCtrl.text.trim(); _savedPrintPhone = phoneCtrl.text.trim(); });
+
+              Uint8List? loadedLogo;
+              try {
+                final byteData = await rootBundle.load('assets/print_logo.png');
+                loadedLogo = byteData.buffer.asUint8List();
+              } catch(e){}
 
               List<String> pNames = state.items.map((i) => state.products.firstWhere((p) => p.id == i.productId).itemName).toList();
+
+              // حساب الارتفاع المرن للمرتجعات أيضاً
+              double estimatedHeight = 350.0 + (state.items.length * 30.0);
+              if (estimatedHeight < 800) estimatedHeight = 800;
 
               final widgetToCapture = MediaQuery(
                 data: const MediaQueryData(),
@@ -240,6 +268,7 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
                         totalAmount: state.total,
                         discount: 0.0,
                         paymentMethod: widget.returnToEdit!.paymentMethod,
+                        logoBytes: loadedLogo,
                       ),
                     ),
                   ),
@@ -249,7 +278,7 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
               if (isShare) {
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('جاري تجهيز الصورة...')));
                 try {
-                  final bytes = await _screenshotController.captureFromWidget(widgetToCapture, delay: const Duration(milliseconds: 500), context: context);
+                  final bytes = await _screenshotController.captureFromWidget(widgetToCapture, delay: const Duration(milliseconds: 200), context: context, targetSize: Size(384, estimatedHeight), pixelRatio: 3.0);
                   final directory = await getApplicationDocumentsDirectory();
                   final imagePath = '${directory.path}/return_${widget.returnToEdit?.delegateReturnNumber.toString().padLeft(5, '0')}.png';
                   File(imagePath).writeAsBytesSync(bytes);
@@ -257,8 +286,13 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
                 } catch(e) {}
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('جاري الاتصال بالطابعة...')));
-                await PrinterService().printImage(await _screenshotController.captureFromWidget(widgetToCapture, delay: const Duration(milliseconds: 500), context: context));
-                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إرسال أمر الطباعة بنجاح!'), backgroundColor: Colors.green));
+                try {
+                  final bytes = await _screenshotController.captureFromWidget(widgetToCapture, delay: const Duration(milliseconds: 200), context: context, targetSize: Size(384, estimatedHeight), pixelRatio: 1.0);
+                  await PrinterService().printImage(bytes);
+                  if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إرسال أمر الطباعة بنجاح!'), backgroundColor: Colors.green));
+                } catch (e) {
+                  if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
+                }
               }
             },
             child: Text(isShare ? 'مشاركة' : 'طباعة', style: const TextStyle(color: Colors.white)),
@@ -268,39 +302,65 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
     });
   }
 
-  Widget _buildReceiptWidgetForImage(ReturnFormReady state, String cName, String cAddress, String cPhone, String dName) {
+  Widget _buildReceiptWidgetForImage(ReturnFormReady state, String cName,
+      String cAddress, String cPhone, String dName) {
     return Container(
-      width: 400, padding: const EdgeInsets.all(16), color: Colors.white,
+      width: 400,
+      padding: const EdgeInsets.all(16),
+      color: Colors.white,
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        children:[
-          const Text('الملك الأمين للبهارات', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-          Text('مرتجع مبيعات رقم: ${widget.returnToEdit?.delegateReturnNumber.toString().padLeft(5, '0') ?? ''}'),
+        children: [
+          const Text('الملك الأمين للبهارات',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+          Text(
+              'مرتجع مبيعات رقم: ${widget.returnToEdit?.delegateReturnNumber.toString().padLeft(5, '0') ?? ''}'),
           const Divider(thickness: 2),
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children:[Text('الزبون: $cName'), Text('التاريخ: ${DateFormat('yyyy-MM-dd').format(DateTime.now())}')]),
-          if(cAddress.isNotEmpty) Row(children:[Text('العنوان: $cAddress')]),
-          if(cPhone.isNotEmpty) Row(children:[Text('الهاتف: $cPhone')]),
-          if(dName.isNotEmpty) Row(children:[Text('المندوب: $dName')]),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Text('الزبون: $cName'),
+            Text('التاريخ: ${DateFormat('yyyy-MM-dd').format(DateTime.now())}')
+          ]),
+          if (cAddress.isNotEmpty) Row(children: [Text('العنوان: $cAddress')]),
+          if (cPhone.isNotEmpty) Row(children: [Text('الهاتف: $cPhone')]),
+          if (dName.isNotEmpty) Row(children: [Text('المندوب: $dName')]),
           const Divider(thickness: 2),
-          Table(
-              columnWidths: const { 0: FlexColumnWidth(2), 1: FlexColumnWidth(1), 2: FlexColumnWidth(1) },
-              children:[
-                const TableRow(children:[Text('المادة', style: TextStyle(fontWeight: FontWeight.bold)), Text('الكمية', style: TextStyle(fontWeight: FontWeight.bold)), Text('الإجمالي', style: TextStyle(fontWeight: FontWeight.bold))]),
-                ...state.items.map((i) {
-                  final pName = state.products.firstWhere((p) => p.id == i.productId).itemName;
-                  return TableRow(children:[Text(pName), Text('${_formatNum(i.quantity)} ${i.unit}'), Text(_formatNum(i.quantity*i.price))]);
-                }).toList(),
-              ]
-          ),
+          Table(columnWidths: const {
+            0: FlexColumnWidth(2),
+            1: FlexColumnWidth(1),
+            2: FlexColumnWidth(1)
+          }, children: [
+            const TableRow(children: [
+              Text('المادة', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text('الكمية', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text('الإجمالي', style: TextStyle(fontWeight: FontWeight.bold))
+            ]),
+            ...state.items.map((i) {
+              final pName = state.products
+                  .firstWhere((p) => p.id == i.productId)
+                  .itemName;
+              return TableRow(children: [
+                Text(pName),
+                Text('${_formatNum(i.quantity)} ${i.unit}'),
+                Text(_formatNum(i.quantity * i.price))
+              ]);
+            }).toList(),
+          ]),
           const Divider(thickness: 2),
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children:[const Text('الصافي النهائي:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)), Text(_formatNum(state.total), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18))]),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            const Text('الصافي النهائي:',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            Text(_formatNum(state.total),
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 18))
+          ]),
         ],
       ),
     );
   }
 
   // --- دالة نافذة تعديل القلم (مخصصة للمرتجع) ---
-  void _showEditItemDialog(BuildContext context, ReturnFormCubit cubit, int index, var item, List<ProductModel> products, double currencyRate) {
+  void _showEditItemDialog(BuildContext context, ReturnFormCubit cubit,
+      int index, var item, List<ProductModel> products, double currencyRate) {
     if (item.isGift) return;
 
     final product = products.firstWhere((p) => p.id == item.productId);
@@ -313,9 +373,12 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
     }
 
     double currentMinPrice = 0.0;
-    if (u == product.unit1) currentMinPrice = _calcPrice(product.minPrice1, product.currency1);
-    else if (u == product.unit2) currentMinPrice = _calcPrice(product.minPrice2, product.currency2);
-    else if (u == product.unit3) currentMinPrice = _calcPrice(product.minPrice3, product.currency3);
+    if (u == product.unit1)
+      currentMinPrice = _calcPrice(product.minPrice1, product.currency1);
+    else if (u == product.unit2)
+      currentMinPrice = _calcPrice(product.minPrice2, product.currency2);
+    else if (u == product.unit3)
+      currentMinPrice = _calcPrice(product.minPrice3, product.currency3);
 
     final qtyCtrl = TextEditingController(text: _rawNum(qty));
     final priceCtrl = TextEditingController(text: _rawNum(price));
@@ -328,13 +391,16 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
       builder: (ctx) {
         return StatefulBuilder(builder: (context, setState) {
           return AlertDialog(
-            title: Text('تعديل ${product.itemName}', style: TextStyle(color: Colors.red.shade700, fontWeight: FontWeight.bold)),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Text('تعديل ${product.itemName}',
+                style: TextStyle(
+                    color: Colors.red.shade700, fontWeight: FontWeight.bold)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children:[
+                children: [
                   TextFormField(
                     controller: qtyCtrl,
                     keyboardType: TextInputType.number,
@@ -342,31 +408,59 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
                       labelText: 'الكمية',
                       border: const OutlineInputBorder(),
                       errorText: qtyError,
-                      suffixIcon: IconButton(icon: const Icon(Icons.clear, size: 18), onPressed: () { qtyCtrl.clear(); setState(() => qty = 0); }),
+                      suffixIcon: IconButton(
+                          icon: const Icon(Icons.clear, size: 18),
+                          onPressed: () {
+                            qtyCtrl.clear();
+                            setState(() => qty = 0);
+                          }),
                     ),
                     onChanged: (v) {
                       setState(() {
                         qty = double.tryParse(v) ?? 0;
-                        qtyError = qty <= 0 ? 'لا يمكن أن تكون صفراً أو سالبة' : null;
+                        qtyError =
+                            qty <= 0 ? 'لا يمكن أن تكون صفراً أو سالبة' : null;
                       });
                     },
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     value: u,
-                    decoration: const InputDecoration(labelText: 'الوحدة', border: OutlineInputBorder()),
-                    items:[
-                      if (product.unit1.isNotEmpty) DropdownMenuItem(value: product.unit1, child: Text(product.unit1)),
-                      if (product.unit2.isNotEmpty) DropdownMenuItem(value: product.unit2, child: Text(product.unit2)),
-                      if (product.unit3.isNotEmpty) DropdownMenuItem(value: product.unit3, child: Text(product.unit3)),
+                    decoration: const InputDecoration(
+                        labelText: 'الوحدة', border: OutlineInputBorder()),
+                    items: [
+                      if (product.unit1.isNotEmpty)
+                        DropdownMenuItem(
+                            value: product.unit1, child: Text(product.unit1)),
+                      if (product.unit2.isNotEmpty)
+                        DropdownMenuItem(
+                            value: product.unit2, child: Text(product.unit2)),
+                      if (product.unit3.isNotEmpty)
+                        DropdownMenuItem(
+                            value: product.unit3, child: Text(product.unit3)),
                     ],
                     onChanged: (v) {
                       if (v != null) {
                         setState(() {
                           u = v;
-                          if (v == product.unit1) { price = _calcPrice(product.shopPrice1, product.currency1); currentMinPrice = _calcPrice(product.minPrice1, product.currency1); }
-                          if (v == product.unit2) { price = _calcPrice(product.shopPrice2, product.currency2); currentMinPrice = _calcPrice(product.minPrice2, product.currency2); }
-                          if (v == product.unit3) { price = _calcPrice(product.shopPrice3, product.currency3); currentMinPrice = _calcPrice(product.minPrice3, product.currency3); }
+                          if (v == product.unit1) {
+                            price = _calcPrice(
+                                product.shopPrice1, product.currency1);
+                            currentMinPrice = _calcPrice(
+                                product.minPrice1, product.currency1);
+                          }
+                          if (v == product.unit2) {
+                            price = _calcPrice(
+                                product.shopPrice2, product.currency2);
+                            currentMinPrice = _calcPrice(
+                                product.minPrice2, product.currency2);
+                          }
+                          if (v == product.unit3) {
+                            price = _calcPrice(
+                                product.shopPrice3, product.currency3);
+                            currentMinPrice = _calcPrice(
+                                product.minPrice3, product.currency3);
+                          }
 
                           priceCtrl.text = _rawNum(price);
                           priceError = null;
@@ -382,28 +476,43 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
                       labelText: 'السعر الإفرادي',
                       border: const OutlineInputBorder(),
                       errorText: priceError,
-                      suffixIcon: IconButton(icon: const Icon(Icons.clear, size: 18), onPressed: () { priceCtrl.clear(); setState(() => price = 0); }),
+                      suffixIcon: IconButton(
+                          icon: const Icon(Icons.clear, size: 18),
+                          onPressed: () {
+                            priceCtrl.clear();
+                            setState(() => price = 0);
+                          }),
                     ),
                     onChanged: (v) {
                       setState(() {
                         price = double.tryParse(v) ?? 0;
-                        priceError = price <= 0 ? 'لا يمكن أن يكون صفراً أو سالباً' : null;
+                        priceError = price <= 0
+                            ? 'لا يمكن أن يكون صفراً أو سالباً'
+                            : null;
                       });
                     },
                   ),
                   const SizedBox(height: 6),
                   if (currentMinPrice > 0)
-                    Text('السعر الأدنى كمرجع: ${_formatNum(currentMinPrice)}', style: TextStyle(color: Colors.grey.shade700, fontSize: 12, fontWeight: FontWeight.bold)),
+                    Text('السعر الأدنى كمرجع: ${_formatNum(currentMinPrice)}',
+                        style: TextStyle(
+                            color: Colors.grey.shade700,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
-            actions:[
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('إلغاء')),
               ElevatedButton(
                 onPressed: () {
                   setState(() {
-                    qtyError = qty <= 0 ? 'لا يمكن أن تكون صفراً أو سالبة' : null;
-                    priceError = price <= 0 ? 'لا يمكن أن يكون صفراً أو سالباً' : null;
+                    qtyError =
+                        qty <= 0 ? 'لا يمكن أن تكون صفراً أو سالبة' : null;
+                    priceError =
+                        price <= 0 ? 'لا يمكن أن يكون صفراً أو سالباً' : null;
                   });
 
                   if (qtyError == null && priceError == null) {
@@ -411,8 +520,10 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
                     Navigator.pop(ctx);
                   }
                 },
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade700),
-                child: const Text('حفظ التعديل', style: TextStyle(color: Colors.white)),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red.shade700),
+                child: const Text('حفظ التعديل',
+                    style: TextStyle(color: Colors.white)),
               ),
             ],
           );
@@ -427,245 +538,477 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
     if (authState is! AuthAuthenticated) return const SizedBox.shrink();
     final currentUser = authState.user;
 
-    final isMine = widget.returnToEdit == null || widget.returnToEdit!.delegateId == currentUser.id;
-    final canEdit = (isMine && currentUser.permissions.returnEdit) || (!isMine && currentUser.permissions.returnEditMonitored);
-    final canDelete = (isMine && currentUser.permissions.returnDelete) || (!isMine && currentUser.permissions.returnDeleteMonitored);
+    final isMine = widget.returnToEdit == null ||
+        widget.returnToEdit!.delegateId == currentUser.id;
+    final canEdit = (isMine && currentUser.permissions.returnEdit) ||
+        (!isMine && currentUser.permissions.returnEditMonitored);
+    final canDelete = (isMine && currentUser.permissions.returnDelete) ||
+        (!isMine && currentUser.permissions.returnDeleteMonitored);
 
     return BlocProvider(
-      create: (context) => ReturnFormCubit(context.read<CustomersRepository>(), context.read<ProductsRepository>(), context.read<TransactionsRepository>(), currentUser)..initData(returnToEdit: widget.returnToEdit),
+      create: (context) => ReturnFormCubit(
+          context.read<CustomersRepository>(),
+          context.read<ProductsRepository>(),
+          context.read<TransactionsRepository>(),
+          currentUser)
+        ..initData(returnToEdit: widget.returnToEdit),
       child: PopScope(
-          canPop: _canPop, // false بالوضع الطبيعي
-          onPopInvoked: (didPop) {
-            if (didPop) return;
-            // إشعار لطيف للمندوب ليستخدم الزر الصحيح
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('يرجى استخدام سهم الرجوع في أعلى الشاشة.'), duration: Duration(seconds: 1)));
-          },
-          child: Scaffold(
-        appBar: AppBar(
-          // زر رجوع مخصص نتحكم به
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back), // السهم يتجه تلقائياً حسب اللغة
-            onPressed: () {
-              setState(() => _canPop = true); // نسمح بالخروج
-              Future.delayed(const Duration(milliseconds: 50), () {
-                if (context.mounted) context.pop(); // نخرج بأمان
-              });
-            },
+        canPop: _canPop, // false بالوضع الطبيعي
+        onPopInvoked: (didPop) {
+          if (didPop) return;
+          // إشعار لطيف للمندوب ليستخدم الزر الصحيح
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text('يرجى استخدام سهم الرجوع في أعلى الشاشة.'),
+              duration: Duration(seconds: 1)));
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            // زر رجوع مخصص نتحكم به
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              // السهم يتجه تلقائياً حسب اللغة
+              onPressed: () {
+                setState(() => _canPop = true); // نسمح بالخروج
+                Future.delayed(const Duration(milliseconds: 50), () {
+                  if (context.mounted) context.pop(); // نخرج بأمان
+                });
+              },
+            ),
+            title: Text(isViewMode
+                ? 'عرض مرتجع #${widget.returnToEdit!.delegateReturnNumber.toString().padLeft(5, '0')}'
+                : (widget.returnToEdit != null
+                    ? 'تعديل الفاتورة'
+                    : 'إنشاء فاتورة مرتجعات')),
+            centerTitle: true,
+            backgroundColor:
+                isViewMode ? Colors.grey.shade700 : Colors.red.shade700,
+            foregroundColor: Colors.white,
+            actions: isViewMode
+                ? [
+                    BlocBuilder<ReturnFormCubit, ReturnFormState>(
+                        builder: (context, state) {
+                      if (state is ReturnFormReady) {
+                        return PopupMenuButton<String>(
+                          onSelected: (val) {
+                            if (val == 'edit')
+                              setState(() => isViewMode = false);
+                            if (val == 'delete')
+                              _showDeleteDialog(
+                                  context, context.read<ReturnFormCubit>());
+                            if (val == 'print')
+                              _showPrintShareDialog(
+                                  context, state, false, currentUser);
+                            if (val == 'share')
+                              _showPrintShareDialog(
+                                  context, state, true, currentUser);
+                          },
+                          itemBuilder: (ctx) => [
+                            const PopupMenuItem(
+                                value: 'print',
+                                child: Row(children: [
+                                  Icon(Icons.print),
+                                  SizedBox(width: 8),
+                                  Text('طباعة حرارية')
+                                ])),
+                            const PopupMenuItem(
+                                value: 'share',
+                                child: Row(children: [
+                                  Icon(Icons.share),
+                                  SizedBox(width: 8),
+                                  Text('مشاركة صورة المرتجع')
+                                ])),
+                            if (canEdit) const PopupMenuDivider(),
+                            if (canEdit)
+                              const PopupMenuItem(
+                                  value: 'edit',
+                                  child: Row(children: [
+                                    Icon(Icons.edit),
+                                    SizedBox(width: 8),
+                                    Text('تعديل المرتجع')
+                                  ])),
+                            if (canDelete)
+                              const PopupMenuItem(
+                                  value: 'delete',
+                                  child: Row(children: [
+                                    Icon(Icons.delete, color: Colors.red),
+                                    SizedBox(width: 8),
+                                    Text('حذف المرتجع',
+                                        style: TextStyle(color: Colors.red))
+                                  ])),
+                          ],
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    })
+                  ]
+                : null,
           ),
-          title: Text(isViewMode ? 'عرض مرتجع #${widget.returnToEdit!.delegateReturnNumber.toString().padLeft(5, '0')}' : (widget.returnToEdit != null ? 'تعديل الفاتورة' : 'إنشاء فاتورة مرتجعات')),
-          centerTitle: true,
-          backgroundColor: isViewMode ? Colors.grey.shade700 : Colors.red.shade700,
-          foregroundColor: Colors.white,
-          actions: isViewMode ?[
-            BlocBuilder<ReturnFormCubit, ReturnFormState>(
-                builder: (context, state) {
-                  if (state is ReturnFormReady) {
-                    return PopupMenuButton<String>(
-                      onSelected: (val) {
-                        if (val == 'edit') setState(() => isViewMode = false);
-                        if (val == 'delete') _showDeleteDialog(context, context.read<ReturnFormCubit>());
-                        if (val == 'print') _showPrintShareDialog(context, state, false, currentUser);
-                        if (val == 'share') _showPrintShareDialog(context, state, true, currentUser);
-                      },
-                      itemBuilder: (ctx) =>[
-                        const PopupMenuItem(value: 'print', child: Row(children:[Icon(Icons.print), SizedBox(width: 8), Text('طباعة حرارية')])),
-                        const PopupMenuItem(value: 'share', child: Row(children:[Icon(Icons.share), SizedBox(width: 8), Text('مشاركة صورة المرتجع')])),
-                        if (canEdit) const PopupMenuDivider(),
-                        if (canEdit) const PopupMenuItem(value: 'edit', child: Row(children:[Icon(Icons.edit), SizedBox(width: 8), Text('تعديل المرتجع')])),
-                        if (canDelete) const PopupMenuItem(value: 'delete', child: Row(children:[Icon(Icons.delete, color: Colors.red), SizedBox(width: 8), Text('حذف المرتجع', style: TextStyle(color: Colors.red))])),
+          body: BlocConsumer<ReturnFormCubit, ReturnFormState>(
+            listener: (context, state) {
+              if (state is ReturnFormSuccess) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('تمت العملية بنجاح'),
+                    backgroundColor: Colors.green));
+                setState(() => _canPop = true);
+                context.pop();
+              } else if (state is ReturnFormError) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(state.message), backgroundColor: Colors.red));
+              }
+            },
+            builder: (context, state) {
+              if (state is ReturnFormLoading || state is ReturnFormInitial)
+                return const Center(
+                    child: CircularProgressIndicator(color: Colors.red));
+
+              // أضفنا هذا القسم لمنع الشاشة البيضاء
+              if (state is ReturnFormError) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline,
+                            color: Colors.red, size: 80),
+                        const SizedBox(height: 16),
+                        Text(state.message,
+                            style: const TextStyle(
+                                color: Colors.red,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold),
+                            textAlign: TextAlign.center),
                       ],
-                    );
-                  }
-                  return const SizedBox.shrink();
-                }
-            )
-          ] : null,
-        ),
-        body: BlocConsumer<ReturnFormCubit, ReturnFormState>(
-          listener: (context, state) {
-            if (state is ReturnFormSuccess) {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تمت العملية بنجاح'), backgroundColor: Colors.green));
-              setState(() => _canPop = true);
-              context.pop();
-            } else if (state is ReturnFormError) {
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message), backgroundColor: Colors.red));
-            }
-          },
-          builder: (context, state) {
-            if (state is ReturnFormLoading || state is ReturnFormInitial) return const Center(child: CircularProgressIndicator(color: Colors.red));
-
-            // أضفنا هذا القسم لمنع الشاشة البيضاء
-            if (state is ReturnFormError) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children:[
-                      const Icon(Icons.error_outline, color: Colors.red, size: 80),
-                      const SizedBox(height: 16),
-                      Text(state.message, style: const TextStyle(color: Colors.red, fontSize: 16, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-                    ],
+                    ),
                   ),
-                ),
-              );
-            }
-
-            if (state is ReturnFormReady) {
-              final cubit = context.read<ReturnFormCubit>();
-
-              if (isViewMode && _selectedCustomer == null && widget.returnToEdit!.customerId.isNotEmpty) {
-                try { _selectedCustomer = state.myCustomers.firstWhere((c) => c.id == widget.returnToEdit!.customerId); } catch(e){}
+                );
               }
 
-              return Column(
-                children:[
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children:[
-                          Row(
-                            children:[
-                              Expanded(
-                                flex: 2,
-                                child: Autocomplete<CustomerModel>(
-                                  initialValue: TextEditingValue(text: _selectedCustomer != null ? _cleanCustomerName(_selectedCustomer!.customerName, _suffixToUse) : (isViewMode ? _cleanCustomerName(widget.returnToEdit!.customerName, _suffixToUse) : '')),
-                                  displayStringForOption: (c) => _cleanCustomerName(c.customerName, _suffixToUse),
-                                  optionsBuilder: (textEditingValue) {
-                                    if (isViewMode) return const Iterable<CustomerModel>.empty();
-                                    if (textEditingValue.text.isEmpty) return state.myCustomers;
-                                    return state.myCustomers.where((c) => _cleanCustomerName(c.customerName, _suffixToUse).toLowerCase().contains(textEditingValue.text.toLowerCase()));
-                                  },
-                                  onSelected: (c) => _selectedCustomer = c,
-                                  fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
-                                    return TextFormField(
-                                      controller: controller, focusNode: focusNode, readOnly: isViewMode,
-            decoration: InputDecoration(labelText: 'الزبون (اتركه فارغاً للنقدي)', border: const OutlineInputBorder(), isDense: true, filled: isViewMode,
-              // إضافة زر مسح الزبون هنا
-              suffixIcon: isViewMode ? null : IconButton(
-                icon: const Icon(Icons.clear, size: 20),
-                onPressed: () {
-                  controller.clear(); // مسح النص
-                  setState(() => _selectedCustomer = null); // إلغاء التحديد برمجياً
-                },
-              ),
-            ),
-                                    );
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: DropdownButtonFormField<String>(
-                                  decoration: InputDecoration(labelText: 'النوع', border: const OutlineInputBorder(), isDense: true, filled: isViewMode),
-                                  value: state.paymentMethod,
-                                  items: const[DropdownMenuItem(value: 'cash', child: Text('نقدي')), DropdownMenuItem(value: 'credit', child: Text('آجل'))],
-                                  onChanged: isViewMode ? null : (val) => cubit.updatePaymentMethod(val!),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          TextFormField(controller: _noteController, readOnly: isViewMode, decoration: InputDecoration(labelText: 'البيان', border: const OutlineInputBorder(), isDense: true, filled: isViewMode)),
+              if (state is ReturnFormReady) {
+                final cubit = context.read<ReturnFormCubit>();
 
-                          const Divider(height: 32, thickness: 2),
+                if (isViewMode &&
+                    _selectedCustomer == null &&
+                    widget.returnToEdit!.customerId.isNotEmpty) {
+                  try {
+                    _selectedCustomer = state.myCustomers.firstWhere(
+                        (c) => c.id == widget.returnToEdit!.customerId);
+                  } catch (e) {}
+                }
 
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children:[
-                              Text('الأقلام (${state.items.length}) | إجمالي الكمية: ${_formatNum(state.items.fold(0.0, (s, i) => s + i.quantity))}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey)),
-                              if (!isViewMode)
-                                ElevatedButton.icon(
-                                  onPressed: () => showModalBottomSheet(
-                                    context: context,
-                                    isScrollControlled: true,
-                                    backgroundColor: Colors.white,
-                                    builder: (_) => FractionallySizedBox(
-                                      heightFactor: 0.9,
-                                      child: ProductSelectionGrid(
-                                        products: state.products,
-                                        currencyRate: state.currencyRate,
-                                        isReturn: true,
-                                        onProductAdded: (p, q, u, pr, g) => cubit.addItem(p, q, u, pr, g), // في المرتجع المتغير الأخير isGift سيكون دائماً false داخل الـ Grid
-                                      ),
-                                    ),
-                                  ),
-                                  icon: const Icon(Icons.add, color: Colors.white, size: 18),
-                                  label: const Text('إضافة', style: TextStyle(color: Colors.white)),
-                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade700, padding: const EdgeInsets.symmetric(horizontal: 12)),
-                                )
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-
-                          Expanded(
-                            child: Column(
-                              children:[
-                                Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                                  decoration: BoxDecoration(color: Colors.red.shade100, borderRadius: const BorderRadius.vertical(top: Radius.circular(8))),
-                                  child: Row(
-                                    children:[
-                                      Expanded(flex: 1, child: Text(isViewMode ? '#' : '#', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black87))),
-                                      const Expanded(flex: 4, child: Text('المادة', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black87))),
-                                      const Expanded(flex: 2, child: Text('الكمية', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black87))),
-                                      const Expanded(flex: 2, child: Text('الوحدة', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black87))),
-                                      const Expanded(flex: 3, child: Text('الإفرادي', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black87))),
-                                      const Expanded(flex: 3, child: Text('الإجمالي', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black87))),
-                                    ],
-                                  ),
-                                ),
+                return Column(
+                  children: [
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Row(
+                              children: [
                                 Expanded(
-                                  child: state.items.isEmpty
-                                      ? Container(width: double.infinity, decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: const BorderRadius.vertical(bottom: Radius.circular(8))), child: const Center(child: Text('المرتجع فارغ', style: TextStyle(color: Colors.grey))))
-                                      : Container(
-                                    decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: const BorderRadius.vertical(bottom: Radius.circular(8))),
-                                    child: isViewMode
-                                        ? ListView.builder(itemCount: state.items.length, itemBuilder: (context, index) => _buildItemRow(context, cubit, state, index, true))
-                                        : ReorderableListView.builder(buildDefaultDragHandles: false, itemCount: state.items.length, onReorder: (oldIdx, newIdx) => cubit.reorderItems(oldIdx, newIdx), itemBuilder: (context, index) => _buildItemRow(context, cubit, state, index, false)),
+                                  flex: 2,
+                                  child: Autocomplete<CustomerModel>(
+                                    initialValue: TextEditingValue(
+                                        text: _selectedCustomer != null
+                                            ? _cleanCustomerName(
+                                                _selectedCustomer!.customerName,
+                                                _suffixToUse)
+                                            : (isViewMode
+                                                ? _cleanCustomerName(
+                                                    widget.returnToEdit!
+                                                        .customerName,
+                                                    _suffixToUse)
+                                                : '')),
+                                    displayStringForOption: (c) =>
+                                        _cleanCustomerName(
+                                            c.customerName, _suffixToUse),
+                                    optionsBuilder: (textEditingValue) {
+                                      if (isViewMode)
+                                        return const Iterable<
+                                            CustomerModel>.empty();
+                                      if (textEditingValue.text.isEmpty)
+                                        return state.myCustomers;
+                                      return state.myCustomers.where((c) =>
+                                          _cleanCustomerName(
+                                                  c.customerName, _suffixToUse)
+                                              .toLowerCase()
+                                              .contains(textEditingValue.text
+                                                  .toLowerCase()));
+                                    },
+                                    onSelected: (c) => _selectedCustomer = c,
+                                    fieldViewBuilder: (context, controller,
+                                        focusNode, onFieldSubmitted) {
+                                      return TextFormField(
+                                        controller: controller,
+                                        focusNode: focusNode,
+                                        readOnly: isViewMode,
+                                        decoration: InputDecoration(
+                                          labelText:
+                                              'الزبون (اتركه فارغاً للنقدي)',
+                                          border: const OutlineInputBorder(),
+                                          isDense: true,
+                                          filled: isViewMode,
+                                          // إضافة زر مسح الزبون هنا
+                                          suffixIcon: isViewMode
+                                              ? null
+                                              : IconButton(
+                                                  icon: const Icon(Icons.clear,
+                                                      size: 20),
+                                                  onPressed: () {
+                                                    controller
+                                                        .clear(); // مسح النص
+                                                    setState(() =>
+                                                        _selectedCustomer =
+                                                            null); // إلغاء التحديد برمجياً
+                                                  },
+                                                ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: DropdownButtonFormField<String>(
+                                    decoration: InputDecoration(
+                                        labelText: 'النوع',
+                                        border: const OutlineInputBorder(),
+                                        isDense: true,
+                                        filled: isViewMode),
+                                    value: state.paymentMethod,
+                                    items: const [
+                                      DropdownMenuItem(
+                                          value: 'cash', child: Text('نقدي')),
+                                      DropdownMenuItem(
+                                          value: 'credit', child: Text('آجل'))
+                                    ],
+                                    onChanged: isViewMode
+                                        ? null
+                                        : (val) =>
+                                            cubit.updatePaymentMethod(val!),
                                   ),
                                 ),
                               ],
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 12),
+                            TextFormField(
+                                controller: _noteController,
+                                readOnly: isViewMode,
+                                decoration: InputDecoration(
+                                    labelText: 'البيان',
+                                    border: const OutlineInputBorder(),
+                                    isDense: true,
+                                    filled: isViewMode)),
+                            const Divider(height: 32, thickness: 2),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                    'الأقلام (${state.items.length}) | إجمالي الكمية: ${_formatNum(state.items.fold(0.0, (s, i) => s + i.quantity))}',
+                                    style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.grey)),
+                                if (!isViewMode)
+                                  ElevatedButton.icon(
+                                    onPressed: () => showModalBottomSheet(
+                                      context: context,
+                                      isScrollControlled: true,
+                                      backgroundColor: Colors.white,
+                                      builder: (_) => FractionallySizedBox(
+                                        heightFactor: 0.9,
+                                        child: ProductSelectionGrid(
+                                          products: state.products,
+                                          currencyRate: state.currencyRate,
+                                          isReturn: true,
+                                          onProductAdded: (p, q, u, pr, g) =>
+                                              cubit.addItem(p, q, u, pr,
+                                                  g), // في المرتجع المتغير الأخير isGift سيكون دائماً false داخل الـ Grid
+                                        ),
+                                      ),
+                                    ),
+                                    icon: const Icon(Icons.add,
+                                        color: Colors.white, size: 18),
+                                    label: const Text('إضافة',
+                                        style: TextStyle(color: Colors.white)),
+                                    style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red.shade700,
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 12)),
+                                  )
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 8, horizontal: 4),
+                                    decoration: BoxDecoration(
+                                        color: Colors.red.shade100,
+                                        borderRadius:
+                                            const BorderRadius.vertical(
+                                                top: Radius.circular(8))),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                            flex: 1,
+                                            child: Text(isViewMode ? '#' : '#',
+                                                textAlign: TextAlign.center,
+                                                style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 12,
+                                                    color: Colors.black87))),
+                                        const Expanded(
+                                            flex: 4,
+                                            child: Text('المادة',
+                                                style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 12,
+                                                    color: Colors.black87))),
+                                        const Expanded(
+                                            flex: 2,
+                                            child: Text('الكمية',
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 12,
+                                                    color: Colors.black87))),
+                                        const Expanded(
+                                            flex: 2,
+                                            child: Text('الوحدة',
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 12,
+                                                    color: Colors.black87))),
+                                        const Expanded(
+                                            flex: 3,
+                                            child: Text('الإفرادي',
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 12,
+                                                    color: Colors.black87))),
+                                        const Expanded(
+                                            flex: 3,
+                                            child: Text('الإجمالي',
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 12,
+                                                    color: Colors.black87))),
+                                      ],
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: state.items.isEmpty
+                                        ? Container(
+                                            width: double.infinity,
+                                            decoration: BoxDecoration(
+                                                border: Border.all(
+                                                    color:
+                                                        Colors.grey.shade300),
+                                                borderRadius:
+                                                    const BorderRadius.vertical(
+                                                        bottom: Radius.circular(
+                                                            8))),
+                                            child: const Center(
+                                                child: Text('المرتجع فارغ',
+                                                    style: TextStyle(
+                                                        color: Colors.grey))))
+                                        : Container(
+                                            decoration: BoxDecoration(
+                                                border: Border.all(
+                                                    color:
+                                                        Colors.grey.shade300),
+                                                borderRadius:
+                                                    const BorderRadius.vertical(
+                                                        bottom: Radius.circular(
+                                                            8))),
+                                            child: isViewMode
+                                                ? ListView.builder(
+                                                    itemCount:
+                                                        state.items.length,
+                                                    itemBuilder: (context, index) =>
+                                                        _buildItemRow(
+                                                            context,
+                                                            cubit,
+                                                            state,
+                                                            index,
+                                                            true))
+                                                : ReorderableListView.builder(
+                                                    buildDefaultDragHandles:
+                                                        false,
+                                                    itemCount:
+                                                        state.items.length,
+                                                    onReorder: (oldIdx, newIdx) =>
+                                                        cubit.reorderItems(
+                                                            oldIdx, newIdx),
+                                                    itemBuilder: (context, index) =>
+                                                        _buildItemRow(
+                                                            context,
+                                                            cubit,
+                                                            state,
+                                                            index,
+                                                            false)),
+                                          ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-
-                  Container(
-                    padding: const EdgeInsets.all(16), color: Colors.red.shade50,
-                    child: SafeArea(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children:[
-                          Text('إجمالي المرتجع: ${_formatNum(state.total)}', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.red.shade800)),
-                          if (!isViewMode)
-                            ElevatedButton(
-                              onPressed: () => cubit.submitReturn(selectedCustomer: _selectedCustomer, note: _noteController.text.trim(), oldReturn: widget.returnToEdit),
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade700, padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12)),
-                              child: const Text('حفظ الفاتورة', style: TextStyle(color: Colors.white, fontSize: 16)),
-                            )
-                        ],
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      color: Colors.red.shade50,
+                      child: SafeArea(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('إجمالي المرتجع: ${_formatNum(state.total)}',
+                                style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.red.shade800)),
+                            if (!isViewMode)
+                              ElevatedButton(
+                                onPressed: () => cubit.submitReturn(
+                                    selectedCustomer: _selectedCustomer,
+                                    note: _noteController.text.trim(),
+                                    oldReturn: widget.returnToEdit),
+                                style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red.shade700,
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 32, vertical: 12)),
+                                child: const Text('حفظ الفاتورة',
+                                    style: TextStyle(
+                                        color: Colors.white, fontSize: 16)),
+                              )
+                          ],
+                        ),
                       ),
-                    ),
-                  )
-                ],
-              );
-            }
-            return const SizedBox.shrink();
-          },
+                    )
+                  ],
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
         ),
       ),
-        ),
     );
   }
 
-  Widget _buildItemRow(BuildContext context, ReturnFormCubit cubit, ReturnFormReady state, int index, bool isViewOnly) {
+  Widget _buildItemRow(BuildContext context, ReturnFormCubit cubit,
+      ReturnFormReady state, int index, bool isViewOnly) {
     final item = state.items[index];
-    final pName = state.products.firstWhere((p) => p.id == item.productId).itemName;
+    final pName =
+        state.products.firstWhere((p) => p.id == item.productId).itemName;
     final total = item.quantity * item.price;
 
     Color bgColor = index % 2 == 0 ? Colors.white : Colors.grey.shade50;
@@ -674,23 +1017,80 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
       key: ObjectKey(item),
       color: bgColor,
       child: InkWell(
-        onTap: isViewOnly ? null : () => _showEditItemDialog(context, cubit, index, item, state.products, state.currencyRate),
-        onLongPress: isViewOnly ? null : () {
-          showModalBottomSheet(context: context, builder: (_) => Column(mainAxisSize: MainAxisSize.min, children:[
-            ListTile(leading: const Icon(Icons.delete, color: Colors.red), title: const Text('حذف القلم', style: TextStyle(color: Colors.red)), onTap: () { Navigator.pop(context); cubit.removeItem(index); }),
-          ]));
-        },
+        onTap: isViewOnly
+            ? null
+            : () => _showEditItemDialog(context, cubit, index, item,
+                state.products, state.currencyRate),
+        onLongPress: isViewOnly
+            ? null
+            : () {
+                showModalBottomSheet(
+                    context: context,
+                    builder: (_) =>
+                        Column(mainAxisSize: MainAxisSize.min, children: [
+                          ListTile(
+                              leading:
+                                  const Icon(Icons.delete, color: Colors.red),
+                              title: const Text('حذف القلم',
+                                  style: TextStyle(color: Colors.red)),
+                              onTap: () {
+                                Navigator.pop(context);
+                                cubit.removeItem(index);
+                              }),
+                        ]));
+              },
         child: Container(
-          decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey.shade200))),
+          decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: Colors.grey.shade200))),
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
           child: Row(
-            children:[
-              Expanded(flex: 1, child: isViewOnly ? Text('${index + 1}', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.red.shade800)) : ReorderableDragStartListener(index: index, child: const Icon(Icons.drag_handle, color: Colors.grey, size: 20))),
-              Expanded(flex: 4, child: Text(pName, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black87))),
-              Expanded(flex: 2, child: Text(_formatNum(item.quantity), textAlign: TextAlign.center, style: const TextStyle(fontSize: 12))),
-              Expanded(flex: 2, child: Text(item.unit, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: Colors.blueGrey))),
-              Expanded(flex: 3, child: Text(_formatNum(item.price), textAlign: TextAlign.center, style: const TextStyle(fontSize: 12))),
-              Expanded(flex: 3, child: Text(_formatNum(total), textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.red.shade800))),
+            children: [
+              Expanded(
+                  flex: 1,
+                  child: isViewOnly
+                      ? Text('${index + 1}',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.red.shade800))
+                      : ReorderableDragStartListener(
+                          index: index,
+                          child: const Icon(Icons.drag_handle,
+                              color: Colors.grey, size: 20))),
+              Expanded(
+                  flex: 4,
+                  child: Text(pName,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87))),
+              Expanded(
+                  flex: 2,
+                  child: Text(_formatNum(item.quantity),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 12))),
+              Expanded(
+                  flex: 2,
+                  child: Text(item.unit,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          fontSize: 12, color: Colors.blueGrey))),
+              Expanded(
+                  flex: 3,
+                  child: Text(_formatNum(item.price),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 12))),
+              Expanded(
+                  flex: 3,
+                  child: Text(_formatNum(total),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.red.shade800))),
             ],
           ),
         ),

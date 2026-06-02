@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'dart:typed_data';
 import '../../data/models/unified_transaction.dart';
 import '../../data/models/transaction_item_model.dart';
 
@@ -19,12 +20,14 @@ class PrintDesignWidget extends StatelessWidget {
   final List<String> productNames; // أسماء المواد المطابقة للأقلام
   final double totalAmount;
   final double discount;
+  final Uint8List? logoBytes;
 
   const PrintDesignWidget({
     Key? key, required this.type, required this.paymentMethod, required this.docNumber, required this.date,
     required this.delegateName, required this.customerName, required this.customerAddress,
     required this.customerPhone, required this.companyInfoText, required this.items,
     required this.productNames, required this.totalAmount, this.discount = 0.0,
+    this.logoBytes,
   }) : super(key: key);
 
   String _formatNum(double num) => NumberFormat('#,##0').format(num);
@@ -68,8 +71,11 @@ class PrintDesignWidget extends StatelessWidget {
                   ],
                 ),
               ),
-              // اللوغو (تأكد من وجوده في assets/print_logo.png)
-              Image.asset('assets/print_logo.png', width: 100, height: 90, fit: BoxFit.contain, errorBuilder: (c, e, s) => const SizedBox(width: 80, height: 80, child: Center(child: Icon(Icons.broken_image)))),
+              // السحر هنا: رسم اللوغو من الذاكرة الحية لضمان عدم اختفائه أبداً!
+              if (logoBytes != null)
+                Image.memory(logoBytes!, width: 100, height: 90, fit: BoxFit.contain)
+              else
+                const SizedBox(width: 80, height: 80, child: Center(child: Icon(Icons.broken_image))),
             ],
           ),
           const Divider(color: Colors.black),

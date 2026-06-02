@@ -35,14 +35,20 @@ class _ProductSelectionGridState extends State<ProductSelectionGrid> {
   }
 
   void _addSelectedItemsAndExit() {
+    // الدالة السحرية لفحص العملة (دولار أم ليرة)
+    double _calcPrice(double basePrice, String currency) {
+      return currency == 'USD' ? basePrice * widget.currencyRate : basePrice;
+    }
+
     for (var id in selectedIds) {
       final p = widget.products.firstWhere((prod) => prod.id == id);
       String u = p.defaultUnit.isNotEmpty ? p.defaultUnit : (p.unit1.isNotEmpty ? p.unit1 : 'حبة');
-      double price = p.shopPrice1 * widget.currencyRate;
 
-      // مطابقة السعر للوحدة الافتراضية
-      if (u == p.unit2) price = p.shopPrice2 * widget.currencyRate;
-      if (u == p.unit3) price = p.shopPrice3 * widget.currencyRate;
+      // تطبيق الدالة لحساب السعر الصحيح حسب العملة للوحدة الافتراضية
+      double price = _calcPrice(p.shopPrice1, p.currency1);
+
+      if (u == p.unit2) { price = _calcPrice(p.shopPrice2, p.currency2); }
+      if (u == p.unit3) { price = _calcPrice(p.shopPrice3, p.currency3); }
 
       widget.onProductAdded(p, 1.0, u, price, false);
     }
